@@ -1,8 +1,8 @@
 name: Build Kiosk Launcher APK
 
 on:
-  workflow_dispatch:  # Permet de lancer manuellement
-  push:              # Lance le build à chaque commit
+  workflow_dispatch:  # permet de lancer manuellement
+  push:               # optionnel, lance le build à chaque commit
 
 jobs:
   build:
@@ -24,8 +24,8 @@ jobs:
       - name: Build APK (debug)
         run: ./gradlew assembleDebug
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v3
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4   # <-- mise à jour ici
         with:
           name: KioskLauncher-APK
           path: app/build/outputs/apk/debug/app-debug.apk

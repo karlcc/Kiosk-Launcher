@@ -15,7 +15,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
-        if (supportFragmentManager.findFragmentById(R.id.fragmentContainerView) is AppsListFragment) supportFragmentManager.beginTransaction()
-            .replace(R.id.fragmentContainerView, HomeFragment()).commit()
+        val currentFragment = supportFragmentManager.findFragmentById(R.id.fragmentContainerView)
+        when (currentFragment) {
+            is AppsListFragment -> supportFragmentManager.beginTransaction()
+                .replace(R.id.fragmentContainerView, HomeFragment()).commit()
+            is ConfigFragment -> supportFragmentManager.beginTransaction()
+                .replace(R.id.fragmentContainerView, HomeFragment()).commit()
+        }
     }
 }

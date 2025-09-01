@@ -24,13 +24,6 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Debug - Show fragment_home.xml content
-        run: |
-          echo "=== Checking fragment_home.xml content ==="
-          cat app/src/main/res/layout/fragment_home.xml
-          echo "=== Checking for hidden characters ==="
-          hexdump -C app/src/main/res/layout/fragment_home.xml | head -20
-
       - name: Build APK (debug)
         run: ./gradlew assembleDebug
 

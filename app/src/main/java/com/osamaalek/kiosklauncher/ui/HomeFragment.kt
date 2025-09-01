@@ -33,8 +33,12 @@ class HomeFragment : Fragment() {
         setupWebView()
 
         imageButtonConfig.setOnClickListener {
-            requireActivity().supportFragmentManager.beginTransaction()
-                .replace(R.id.fragmentContainerView, ConfigFragment()).commit()
+            PasswordDialog.showPasswordDialog(requireContext(), 
+                onSuccess = {
+                    requireActivity().supportFragmentManager.beginTransaction()
+                        .replace(R.id.fragmentContainerView, ConfigFragment()).commit()
+                }
+            )
         }
 
         return v

@@ -14,6 +14,7 @@ import android.widget.FrameLayout
 import android.widget.ImageButton
 import androidx.fragment.app.Fragment
 import com.osamaalek.kiosklauncher.R
+import com.osamaalek.kiosklauncher.util.DisplayUtil
 
 class HomeFragment : Fragment() {
 
@@ -114,8 +115,8 @@ class HomeFragment : Fragment() {
                 customViewCallback?.onCustomViewHidden()
                 customViewCallback = null
                 
-                // Restore system UI
-                requireActivity().window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
+                // Restore system UI to user's configured display settings
+                DisplayUtil.applyDisplaySettings(requireActivity(), requireContext())
             }
         }
 

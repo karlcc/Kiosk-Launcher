@@ -7,8 +7,10 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.FrameLayout
 import android.widget.ImageButton
 import androidx.fragment.app.Fragment
 import com.osamaalek.kiosklauncher.R
@@ -18,6 +20,9 @@ class HomeFragment : Fragment() {
     private lateinit var webView: WebView
     private lateinit var imageButtonConfig: ImageButton
     private lateinit var sharedPreferences: SharedPreferences
+    private var customView: View? = null
+    private var customViewCallback: WebChromeClient.CustomViewCallback? = null
+    private var originalOrientation: Int = 0
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreateView(
@@ -53,8 +58,66 @@ class HomeFragment : Fragment() {
         webView.settings.setSupportZoom(true)
         webView.settings.builtInZoomControls = true
         webView.settings.displayZoomControls = false
+        
+        // Enable media playback
+        webView.settings.mediaPlaybackRequiresUserGesture = false
+        webView.settings.allowFileAccess = true
+        webView.settings.allowContentAccess = true
+        webView.settings.setSupportMultipleWindows(true)
 
         webView.webViewClient = WebViewClient()
+        
+        // Custom WebChromeClient for fullscreen video support
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
+                if (customView != null) {
+                    onHideCustomView()
+                    return
+                }
+                
+                customView = view
+                customViewCallback = callback
+                
+                // Hide the WebView and show fullscreen custom view
+                webView.visibility = View.GONE
+                imageButtonConfig.visibility = View.GONE
+                
+                // Add custom view to activity's root layout
+                val decorView = requireActivity().window.decorView as FrameLayout
+                decorView.addView(customView, FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT
+                ))
+                
+                // Hide system UI for true fullscreen
+                requireActivity().window.decorView.systemUiVisibility = (
+                    View.SYSTEM_UI_FLAG_FULLSCREEN
+                    or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                )
+            }
+            
+            override fun onHideCustomView() {
+                if (customView == null) {
+                    return
+                }
+                
+                // Remove custom view from activity's root layout
+                val decorView = requireActivity().window.decorView as FrameLayout
+                decorView.removeView(customView)
+                
+                // Show the WebView again
+                webView.visibility = View.VISIBLE
+                imageButtonConfig.visibility = View.VISIBLE
+                
+                customView = null
+                customViewCallback?.onCustomViewHidden()
+                customViewCallback = null
+                
+                // Restore system UI
+                requireActivity().window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
+            }
+        }
 
         // Load URL from SharedPreferences
         val url = sharedPreferences.getString("webview_url", "https://www.google.com")
@@ -71,6 +134,13 @@ class HomeFragment : Fragment() {
     }
 
     fun onBackPressed(): Boolean {
+        // Handle fullscreen video exit first
+        if (customView != null) {
+            webView.webChromeClient?.onHideCustomView()
+            return true
+        }
+        
+        // Then handle regular web navigation
         return if (webView.canGoBack()) {
             webView.goBack()
             true // Handled by fragment

@@ -6,8 +6,6 @@
     android:layout_height="match_parent"
     tools:context=".ui.HomeFragment">
 
-    <!-- Force rebuild to clear GitHub Actions cache corruption -->
-
     <WebView
         android:id="@+id/webView"
         android:layout_width="0dp"

@@ -70,7 +70,7 @@ class KioskUtil {
                 val devicePolicyManager =
                     context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
                 val myDeviceAdmin = ComponentName(context, MyDeviceAdminReceiver::class.java)
-                devicePolicyManager.isAdminActive(myDeviceAdmin) && context.isInLockTaskMode()
+                devicePolicyManager.isAdminActive(myDeviceAdmin)
             } catch (e: Exception) {
                 false
             }

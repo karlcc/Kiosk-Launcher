@@ -64,5 +64,24 @@ class KioskUtil {
                 )
             }
         }
+
+        fun isKioskModeActive(context: Activity): Boolean {
+            return try {
+                val devicePolicyManager =
+                    context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+                val myDeviceAdmin = ComponentName(context, MyDeviceAdminReceiver::class.java)
+                devicePolicyManager.isAdminActive(myDeviceAdmin) && context.isInLockTaskMode()
+            } catch (e: Exception) {
+                false
+            }
+        }
+
+        fun toggleKioskMode(context: Activity) {
+            if (isKioskModeActive(context)) {
+                stopKioskMode(context)
+            } else {
+                startKioskMode(context)
+            }
+        }
     }
 }

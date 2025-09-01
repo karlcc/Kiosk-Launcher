@@ -21,7 +21,8 @@ import com.osamaalek.kiosklauncher.util.KioskUtil
 class ConfigFragment : Fragment() {
 
     private lateinit var fabApps: FloatingActionButton
-    private lateinit var imageButtonExit: ImageButton
+    private lateinit var fabToggleKiosk: FloatingActionButton
+    private lateinit var textViewKioskToggleLabel: TextView
     private lateinit var editTextUrl: EditText
     private lateinit var buttonSaveUrl: Button
     private lateinit var buttonBackToHome: Button
@@ -37,7 +38,8 @@ class ConfigFragment : Fragment() {
         val v = inflater.inflate(R.layout.fragment_config, container, false)
 
         fabApps = v.findViewById(R.id.floatingActionButton_config)
-        imageButtonExit = v.findViewById(R.id.imageButton_exit_config)
+        fabToggleKiosk = v.findViewById(R.id.fab_toggle_kiosk)
+        textViewKioskToggleLabel = v.findViewById(R.id.textView_kiosk_toggle_label)
         editTextUrl = v.findViewById(R.id.editText_url)
         buttonSaveUrl = v.findViewById(R.id.button_save_url)
         buttonBackToHome = v.findViewById(R.id.button_back_to_home)
@@ -59,13 +61,17 @@ class ConfigFragment : Fragment() {
         val currentPassword = PasswordDialog.getCurrentPassword(requireContext())
         textViewCurrentPassword.text = "Current password: $currentPassword"
 
+        // Update kiosk toggle label based on current state
+        updateKioskToggleLabel()
+
         fabApps.setOnClickListener {
             requireActivity().supportFragmentManager.beginTransaction()
                 .replace(R.id.fragmentContainerView, AppsListFragment()).commit()
         }
 
-        imageButtonExit.setOnClickListener {
-            KioskUtil.stopKioskMode(requireActivity())
+        fabToggleKiosk.setOnClickListener {
+            KioskUtil.toggleKioskMode(requireActivity())
+            updateKioskToggleLabel()
         }
 
         buttonSaveUrl.setOnClickListener {
@@ -114,5 +120,10 @@ class ConfigFragment : Fragment() {
         }
 
         return v
+    }
+
+    private fun updateKioskToggleLabel() {
+        val isKioskActive = KioskUtil.isKioskModeActive(requireActivity())
+        textViewKioskToggleLabel.text = if (isKioskActive) "Exit Kiosk" else "Start Kiosk"
     }
 }

@@ -35,6 +35,20 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".KioskActivationActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="com.osamaalek.kiosklauncher.START_KIOSK" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.osamaalek.kiosklauncher.STOP_KIOSK" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
         <receiver
             android:name=".MyDeviceAdminReceiver"
             android:exported="true"

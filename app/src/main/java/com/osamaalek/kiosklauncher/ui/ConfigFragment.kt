@@ -21,12 +21,12 @@ import com.osamaalek.kiosklauncher.util.KioskUtil
 class ConfigFragment : Fragment() {
 
     private lateinit var fabApps: FloatingActionButton
-    private lateinit var fabToggleKiosk: FloatingActionButton
-    private lateinit var textViewKioskToggleLabel: TextView
+    private lateinit var fabStartKiosk: FloatingActionButton
+    private lateinit var fabExitKiosk: FloatingActionButton
+    private lateinit var fabChangePassword: FloatingActionButton
     private lateinit var editTextUrl: EditText
     private lateinit var buttonSaveUrl: Button
     private lateinit var buttonBackToHome: Button
-    private lateinit var buttonChangePassword: Button
     private lateinit var textViewCurrentPassword: TextView
     private lateinit var switchFullscreen: Switch
     private lateinit var switchHideStatusBar: Switch
@@ -38,12 +38,12 @@ class ConfigFragment : Fragment() {
         val v = inflater.inflate(R.layout.fragment_config, container, false)
 
         fabApps = v.findViewById(R.id.floatingActionButton_config)
-        fabToggleKiosk = v.findViewById(R.id.fab_toggle_kiosk)
-        textViewKioskToggleLabel = v.findViewById(R.id.textView_kiosk_toggle_label)
+        fabStartKiosk = v.findViewById(R.id.fab_start_kiosk)
+        fabExitKiosk = v.findViewById(R.id.fab_exit_kiosk)
+        fabChangePassword = v.findViewById(R.id.fab_change_password)
         editTextUrl = v.findViewById(R.id.editText_url)
         buttonSaveUrl = v.findViewById(R.id.button_save_url)
         buttonBackToHome = v.findViewById(R.id.button_back_to_home)
-        buttonChangePassword = v.findViewById(R.id.button_change_password)
         textViewCurrentPassword = v.findViewById(R.id.textView_current_password)
         switchFullscreen = v.findViewById(R.id.switch_fullscreen)
         switchHideStatusBar = v.findViewById(R.id.switch_hide_status_bar)
@@ -61,17 +61,24 @@ class ConfigFragment : Fragment() {
         val currentPassword = PasswordDialog.getCurrentPassword(requireContext())
         textViewCurrentPassword.text = "Current password: $currentPassword"
 
-        // Update kiosk toggle label based on current state
-        updateKioskToggleLabel()
-
         fabApps.setOnClickListener {
             requireActivity().supportFragmentManager.beginTransaction()
                 .replace(R.id.fragmentContainerView, AppsListFragment()).commit()
         }
 
-        fabToggleKiosk.setOnClickListener {
-            KioskUtil.toggleKioskMode(requireActivity())
-            updateKioskToggleLabel()
+        fabStartKiosk.setOnClickListener {
+            KioskUtil.startKioskMode(requireActivity())
+        }
+
+        fabExitKiosk.setOnClickListener {
+            KioskUtil.stopKioskMode(requireActivity())
+        }
+
+        fabChangePassword.setOnClickListener {
+            PasswordDialog.showSetPasswordDialog(requireContext()) {
+                val newPassword = PasswordDialog.getCurrentPassword(requireContext())
+                textViewCurrentPassword.text = "Current password: $newPassword"
+            }
         }
 
         buttonSaveUrl.setOnClickListener {
@@ -91,12 +98,6 @@ class ConfigFragment : Fragment() {
             }
         }
 
-        buttonChangePassword.setOnClickListener {
-            PasswordDialog.showSetPasswordDialog(requireContext()) {
-                val newPassword = PasswordDialog.getCurrentPassword(requireContext())
-                textViewCurrentPassword.text = "Current password: $newPassword"
-            }
-        }
 
         switchFullscreen.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
@@ -120,10 +121,5 @@ class ConfigFragment : Fragment() {
         }
 
         return v
-    }
-
-    private fun updateKioskToggleLabel() {
-        val isKioskActive = KioskUtil.isKioskModeActive(requireActivity())
-        textViewKioskToggleLabel.text = if (isKioskActive) "Exit Kiosk" else "Start Kiosk"
     }
 }

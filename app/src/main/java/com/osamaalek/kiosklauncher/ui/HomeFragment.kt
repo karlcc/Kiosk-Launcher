@@ -69,4 +69,13 @@ class HomeFragment : Fragment() {
             webView.loadUrl(url)
         }
     }
+
+    fun onBackPressed(): Boolean {
+        return if (webView.canGoBack()) {
+            webView.goBack()
+            true // Handled by fragment
+        } else {
+            false // Not handled, let activity handle it
+        }
+    }
 }

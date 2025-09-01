@@ -24,6 +24,13 @@ class MainActivity : AppCompatActivity() {
     override fun onBackPressed() {
         val currentFragment = supportFragmentManager.findFragmentById(R.id.fragmentContainerView)
         when (currentFragment) {
+            is HomeFragment -> {
+                // Check if webview can handle back navigation
+                if (!currentFragment.onBackPressed()) {
+                    // If webview can't go back, do nothing (kiosk mode should stay)
+                    // or could exit app if needed
+                }
+            }
             is AppsListFragment -> supportFragmentManager.beginTransaction()
                 .replace(R.id.fragmentContainerView, HomeFragment()).commit()
             is ConfigFragment -> supportFragmentManager.beginTransaction()

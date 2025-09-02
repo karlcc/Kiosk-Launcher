@@ -88,6 +88,8 @@ class HomeFragment : Fragment() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 DebugLogger.log("Page finished loading: $url")
+                // Inject fixed pixel viewport after page loads
+                injectFixedPixelViewport()
             }
             
             override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {

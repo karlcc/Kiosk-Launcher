@@ -5,8 +5,12 @@ import androidx.appcompat.app.AppCompatActivity
 import com.osamaalek.kiosklauncher.R
 import com.osamaalek.kiosklauncher.util.DisplayUtil
 import com.osamaalek.kiosklauncher.util.KioskUtil
+import com.osamaalek.kiosklauncher.util.ScreenStateReceiver
+import com.osamaalek.kiosklauncher.util.DebugLogger
 
 class MainActivity : AppCompatActivity() {
+    
+    private var screenStateReceiver: ScreenStateReceiver? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,14 +33,37 @@ class MainActivity : AppCompatActivity() {
             // Set optimal default settings for kiosk mode
             DisplayUtil.saveDisplaySettings(this, false, true) // hideStatusBar=false, fullscreenMode=true
             
-            // Mark that we've initialized the settings
-            sharedPreferences.edit().putBoolean("first_launch", false).apply()
+            // Enable auto-resume kiosk mode by default (home launcher replacement feature)
+            sharedPreferences.edit()
+                .putBoolean("first_launch", false)
+                .putBoolean("auto_resume_kiosk", true)
+                .apply()
+            
+            DebugLogger.log("First launch - auto-resume kiosk mode enabled by default")
+        }
+        
+        // Handle auto-resume intent from ScreenStateReceiver
+        if (intent.getBooleanExtra("auto_resume_kiosk", false)) {
+            DebugLogger.log("MainActivity launched for auto-resume - starting kiosk mode")
         }
     }
 
     override fun onResume() {
         super.onResume()
         DisplayUtil.applyDisplaySettings(this, this)
+        
+        // Register screen state receiver for auto-resume functionality
+        if (screenStateReceiver == null) {
+            screenStateReceiver = ScreenStateReceiver.register(this)
+        }
+    }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        
+        // Unregister screen state receiver
+        ScreenStateReceiver.unregister(this, screenStateReceiver)
+        screenStateReceiver = null
     }
 
     override fun onBackPressed() {

@@ -30,6 +30,7 @@ class ConfigFragment : Fragment() {
     private lateinit var textViewCurrentPassword: TextView
     private lateinit var switchFullscreen: Switch
     private lateinit var switchHideStatusBar: Switch
+    private lateinit var switchAutoResume: Switch
     private lateinit var sharedPreferences: SharedPreferences
 
     override fun onCreateView(
@@ -47,6 +48,7 @@ class ConfigFragment : Fragment() {
         textViewCurrentPassword = v.findViewById(R.id.textView_current_password)
         switchFullscreen = v.findViewById(R.id.switch_fullscreen)
         switchHideStatusBar = v.findViewById(R.id.switch_hide_status_bar)
+        switchAutoResume = v.findViewById(R.id.switch_auto_resume)
 
         sharedPreferences = requireContext().getSharedPreferences("kiosk_settings", Context.MODE_PRIVATE)
 
@@ -57,6 +59,9 @@ class ConfigFragment : Fragment() {
         val (hideStatusBar, fullscreenMode) = DisplayUtil.getDisplaySettings(requireContext())
         switchFullscreen.isChecked = fullscreenMode
         switchHideStatusBar.isChecked = hideStatusBar
+        
+        val autoResume = sharedPreferences.getBoolean("auto_resume_kiosk", true)
+        switchAutoResume.isChecked = autoResume
 
         val currentPassword = PasswordDialog.getCurrentPassword(requireContext())
         textViewCurrentPassword.text = "Current password: $currentPassword"
@@ -113,6 +118,15 @@ class ConfigFragment : Fragment() {
             }
             DisplayUtil.saveDisplaySettings(requireContext(), isChecked, switchFullscreen.isChecked)
             DisplayUtil.applyDisplaySettings(requireActivity(), requireContext())
+        }
+        
+        switchAutoResume.setOnCheckedChangeListener { _, isChecked ->
+            sharedPreferences.edit().putBoolean("auto_resume_kiosk", isChecked).apply()
+            if (isChecked) {
+                Toast.makeText(context, "Auto-resume enabled: Kiosk will restart after screen unlock", Toast.LENGTH_LONG).show()
+            } else {
+                Toast.makeText(context, "Auto-resume disabled", Toast.LENGTH_SHORT).show()
+            }
         }
 
         buttonBackToHome.setOnClickListener {

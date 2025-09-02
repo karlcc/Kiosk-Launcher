@@ -13,8 +13,8 @@ import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import android.widget.ImageButton
 import androidx.fragment.app.Fragment
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
+import android.view.GestureDetector
+import android.view.MotionEvent
 import com.osamaalek.kiosklauncher.R
 import com.osamaalek.kiosklauncher.util.DisplayUtil
 
@@ -27,6 +27,7 @@ class HomeFragment : Fragment() {
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
     private var originalOrientation: Int = 0
     private var isConfigButtonVisible: Boolean = true
+    private lateinit var gestureDetector: GestureDetector
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreateView(
@@ -40,7 +41,8 @@ class HomeFragment : Fragment() {
         sharedPreferences = requireContext().getSharedPreferences("kiosk_settings", Context.MODE_PRIVATE)
 
         setupWebView()
-        setupWindowInsets(v)
+        setupGestureDetector()
+        fixBlackBarIssue()
 
         imageButtonConfig.setOnClickListener {
             PasswordDialog.showPasswordDialog(requireContext(), 
@@ -51,9 +53,10 @@ class HomeFragment : Fragment() {
             )
         }
 
-        // Add touch listener to toggle config button visibility
-        webView.setOnClickListener {
-            toggleConfigButtonVisibility()
+        // Set touch listener on parent container to catch touch events before WebView
+        v.setOnTouchListener { _, event ->
+            gestureDetector.onTouchEvent(event)
+            false // Allow WebView to also handle the event
         }
 
         return v
@@ -134,19 +137,36 @@ class HomeFragment : Fragment() {
         url?.let { webView.loadUrl(it) }
     }
 
-    private fun setupWindowInsets(rootView: View) {
-        ViewCompat.setOnApplyWindowInsetsListener(rootView) { _, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            
-            // Apply padding to avoid black bars
-            webView.setPadding(0, systemBars.top, 0, 0)
-            
-            // Adjust config button position to account for system bars
-            val layoutParams = imageButtonConfig.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
-            layoutParams.topMargin = 8 + systemBars.top
-            imageButtonConfig.layoutParams = layoutParams
-            
-            insets
+    private fun setupGestureDetector() {
+        gestureDetector = GestureDetector(requireContext(), object : GestureDetector.SimpleOnGestureListener() {
+            override fun onSingleTapUp(e: MotionEvent): Boolean {
+                toggleConfigButtonVisibility()
+                return true
+            }
+        })
+    }
+
+    private fun fixBlackBarIssue() {
+        // Use direct layout manipulation to extend WebView to screen edges
+        val layoutParams = webView.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
+        
+        // Get status bar height to extend WebView under it
+        val statusBarHeight = getStatusBarHeight()
+        layoutParams.topMargin = -statusBarHeight
+        webView.layoutParams = layoutParams
+        
+        // Add top padding to WebView content to avoid content being hidden under status bar
+        webView.setPadding(0, statusBarHeight, 0, 0)
+        webView.clipToPadding = false
+    }
+
+    private fun getStatusBarHeight(): Int {
+        val resourceId = resources.getIdentifier("status_bar_height", "dimen", "android")
+        return if (resourceId > 0) {
+            resources.getDimensionPixelSize(resourceId)
+        } else {
+            // Fallback for devices where status bar height can't be determined
+            (24 * resources.displayMetrics.density).toInt()
         }
     }
 

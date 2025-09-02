@@ -192,6 +192,39 @@
     </LinearLayout>
 
     <TextView
+        android:id="@+id/textView_display_label"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:text="Display Settings:"
+        android:textSize="16sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/kiosk_controls_container2" />
+
+    <Switch
+        android:id="@+id/switch_fullscreen"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Fullscreen Mode (Hide Everything)"
+        android:textSize="14sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textView_display_label" />
+
+    <Switch
+        android:id="@+id/switch_hide_status_bar"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Hide Status Bar Only"
+        android:textSize="14sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/switch_fullscreen" />
+
+    <TextView
         android:id="@+id/textView_current_password"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
@@ -202,7 +235,7 @@
         android:gravity="center"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/kiosk_controls_container2" />
+        app:layout_constraintTop_toBottomOf="@+id/switch_hide_status_bar" />
 
     <Button
         android:id="@+id/button_back_to_home"

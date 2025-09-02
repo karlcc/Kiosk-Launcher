@@ -75,7 +75,7 @@ class DisplayUtil {
         fun applyDisplaySettings(activity: Activity, context: Context) {
             val sharedPreferences = context.getSharedPreferences("kiosk_settings", Context.MODE_PRIVATE)
             val hideStatusBar = sharedPreferences.getBoolean(HIDE_STATUS_BAR_KEY, false)
-            val fullscreenMode = sharedPreferences.getBoolean(FULLSCREEN_MODE_KEY, false)
+            val fullscreenMode = sharedPreferences.getBoolean(FULLSCREEN_MODE_KEY, true)
 
             if (fullscreenMode) {
                 setFullscreenMode(activity, true)
@@ -95,7 +95,7 @@ class DisplayUtil {
         fun getDisplaySettings(context: Context): Pair<Boolean, Boolean> {
             val sharedPreferences = context.getSharedPreferences("kiosk_settings", Context.MODE_PRIVATE)
             val hideStatusBar = sharedPreferences.getBoolean(HIDE_STATUS_BAR_KEY, false)
-            val fullscreenMode = sharedPreferences.getBoolean(FULLSCREEN_MODE_KEY, false)
+            val fullscreenMode = sharedPreferences.getBoolean(FULLSCREEN_MODE_KEY, true)
             return Pair(hideStatusBar, fullscreenMode)
         }
     }

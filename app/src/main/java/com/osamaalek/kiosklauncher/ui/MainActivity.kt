@@ -2,20 +2,23 @@ package com.osamaalek.kiosklauncher.ui
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.WindowCompat
 import com.osamaalek.kiosklauncher.R
+import com.osamaalek.kiosklauncher.util.DisplayUtil
 import com.osamaalek.kiosklauncher.util.KioskUtil
 
 class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        // Setup transparent status bar for debug (independent of kiosk mode)
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        
         setContentView(R.layout.activity_main)
+
+        // DisplayUtil.applyDisplaySettings(this, this) // Disabled - conflicts with fullscreen mode
         KioskUtil.startKioskMode(this)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // DisplayUtil.applyDisplaySettings(this, this) // Disabled - conflicts with fullscreen mode
     }
 
     override fun onBackPressed() {

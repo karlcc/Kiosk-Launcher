@@ -15,9 +15,12 @@ import android.widget.ImageButton
 import androidx.fragment.app.Fragment
 import android.view.GestureDetector
 import android.view.MotionEvent
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
+import android.view.WindowManager
+import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import com.osamaalek.kiosklauncher.R
+import com.osamaalek.kiosklauncher.util.DisplayUtil
 import com.osamaalek.kiosklauncher.util.DebugLogger
 
 class HomeFragment : Fragment() {
@@ -48,7 +51,7 @@ class HomeFragment : Fragment() {
         
         setupWebView()
         setupGestureDetector()
-        setupTransparentStatusBar(v)
+        setupStatusBarHiding()
 
         imageButtonConfig.setOnClickListener {
             PasswordDialog.showPasswordDialog(requireContext(), 
@@ -120,7 +123,12 @@ class HomeFragment : Fragment() {
                     FrameLayout.LayoutParams.MATCH_PARENT
                 ))
                 
-                // Note: Transparent status bar remains active during fullscreen video
+                // Hide system UI for true fullscreen
+                requireActivity().window.decorView.systemUiVisibility = (
+                    View.SYSTEM_UI_FLAG_FULLSCREEN
+                    or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                )
             }
             
             override fun onHideCustomView() {
@@ -140,7 +148,8 @@ class HomeFragment : Fragment() {
                 customViewCallback?.onCustomViewHidden()
                 customViewCallback = null
                 
-                // Transparent status bar automatically restored
+                // Restore system UI to user's configured display settings
+                // DisplayUtil.applyDisplaySettings(requireActivity(), requireContext()) // Disabled - conflicts with fullscreen mode
             }
         }
 
@@ -158,26 +167,134 @@ class HomeFragment : Fragment() {
         })
     }
 
-    private fun setupTransparentStatusBar(rootView: View) {
-        DebugLogger.log("Setting up transparent status bar for debug")
+    private fun setupStatusBarHiding() {
+        DebugLogger.log("Setting up status bar hiding for Android ${Build.VERSION.SDK_INT}")
         
-        // Handle window insets to prevent content from being hidden behind the status bar
-        ViewCompat.setOnApplyWindowInsetsListener(rootView) { v, insets ->
-            val statusBarHeight = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top
-            DebugLogger.log("Status bar height: ${statusBarHeight}px")
+        // Log initial state
+        DebugLogger.logStatusBarState(requireActivity())
+        
+        try {
+            // Use FLAG_FULLSCREEN for reliable status bar hiding across all Android versions
+            requireActivity().window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+            requireActivity().window.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
             
-            // Apply padding to prevent content from going behind transparent status bar
-            v.setPadding(
-                v.paddingLeft, 
-                statusBarHeight, 
-                v.paddingRight, 
-                v.paddingBottom
-            )
+            DebugLogger.log("Applied FLAG_FULLSCREEN and FLAG_LAYOUT_NO_LIMITS")
             
-            insets
+            // Clear any conflicting flags
+            requireActivity().window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
+            requireActivity().window.clearFlags(WindowManager.LayoutParams.FLAG_FORCE_NOT_FULLSCREEN)
+            
+            // Extend WebView to full screen
+            val layoutParams = webView.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
+            layoutParams.topMargin = 0
+            layoutParams.bottomMargin = 0
+            webView.layoutParams = layoutParams
+            
+            DebugLogger.log("WebView layout updated for fullscreen")
+            
+            // Remove any padding
+            webView.setPadding(0, 0, 0, 0)
+            
+            // Schedule to override DisplayUtil after a delay
+            Handler(Looper.getMainLooper()).postDelayed({
+                overrideDisplayUtilSettings()
+            }, 500)
+            
+        } catch (e: Exception) {
+            DebugLogger.logError("Error in setupStatusBarHiding", e)
         }
+    }
+    
+    private fun overrideDisplayUtilSettings() {
+        try {
+            DebugLogger.log("Overriding DisplayUtil settings")
+            
+            // Re-apply our fullscreen flags after DisplayUtil might have changed them
+            requireActivity().window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+            requireActivity().window.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
+            
+            // Log state after override
+            DebugLogger.logStatusBarState(requireActivity())
+            DebugLogger.logWebViewState(webView)
+            
+            // Inject CSS with fixed pixel padding
+            injectFixedPixelViewport()
+            
+        } catch (e: Exception) {
+            DebugLogger.logError("Error in overrideDisplayUtilSettings", e)
+        }
+    }
+    
+    private fun injectFixedPixelViewport() {
+        // Get status bar height for fixed pixel padding (Android 4.4+ compatible)
+        val statusBarHeight = getStatusBarHeight()
+        DebugLogger.log("Injecting fixed pixel viewport with statusBarHeight: ${statusBarHeight}px")
         
-        DebugLogger.log("Transparent status bar setup complete")
+        webView.evaluateJavascript("""
+            (function() {
+                console.log('KioskLauncher: Injecting viewport fixes');
+                
+                // Remove existing viewport meta if present
+                var existingViewport = document.querySelector('meta[name="viewport"]');
+                if (existingViewport) {
+                    existingViewport.remove();
+                }
+                
+                // Add viewport meta tag for proper scaling
+                var viewport = document.createElement('meta');
+                viewport.name = 'viewport';
+                viewport.content = 'width=device-width, initial-scale=1.0, user-scalable=no';
+                if (document.head) {
+                    document.head.appendChild(viewport);
+                }
+                
+                // Add CSS with fixed pixel padding for status bar area
+                var style = document.createElement('style');
+                style.id = 'kiosk-status-bar-fix';
+                style.textContent = 
+                    'body { ' +
+                    '  margin: 0 !important; ' +
+                    '  padding: 0 !important; ' +
+                    '  box-sizing: border-box !important; ' +
+                    '} ' +
+                    'html, body { ' +
+                    '  height: 100% !important; ' +
+                    '  overflow-x: hidden !important; ' +
+                    '} ' +
+                    '* { ' +
+                    '  -webkit-box-sizing: border-box !important; ' +
+                    '  -moz-box-sizing: border-box !important; ' +
+                    '  box-sizing: border-box !important; ' +
+                    '}';
+                    
+                if (document.head) {
+                    document.head.appendChild(style);
+                } else {
+                    // Fallback if head is not ready
+                    document.addEventListener('DOMContentLoaded', function() {
+                        document.head.appendChild(style);
+                    });
+                }
+                
+                console.log('KioskLauncher: Viewport injection complete');
+            })();
+        """) { result ->
+            DebugLogger.log("JavaScript viewport injection result: $result")
+        }
+    }
+    
+    private fun getStatusBarHeight(): Int {
+        val resourceId = resources.getIdentifier("status_bar_height", "dimen", "android")
+        return if (resourceId > 0) {
+            val height = resources.getDimensionPixelSize(resourceId)
+            DebugLogger.log("Status bar height from resources: ${height}px")
+            height
+        } else {
+            // Fallback calculation based on density
+            val fallbackHeight = (24 * resources.displayMetrics.density).toInt()
+            DebugLogger.log("Status bar height fallback: ${fallbackHeight}px")
+            fallbackHeight
+        }
     }
 
     private fun toggleConfigButtonVisibility() {

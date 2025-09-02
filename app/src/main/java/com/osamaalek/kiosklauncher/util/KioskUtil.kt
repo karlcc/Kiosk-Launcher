@@ -101,11 +101,6 @@ class KioskUtil {
             }
         }
         
-        fun applyDisplayMode(activity: Activity) {
-            DebugLogger.log("KioskUtil: Applying current display mode settings")
-            enableKioskFullscreen(activity)
-        }
-        
         private fun enableKioskFullscreen(activity: Activity) {
             try {
                 // Check user preference for fullscreen mode

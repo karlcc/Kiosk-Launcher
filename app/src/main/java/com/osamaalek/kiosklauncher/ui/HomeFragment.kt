@@ -15,6 +15,7 @@ import android.widget.ImageButton
 import androidx.fragment.app.Fragment
 import android.view.GestureDetector
 import android.view.MotionEvent
+import android.view.WindowManager
 import com.osamaalek.kiosklauncher.R
 import com.osamaalek.kiosklauncher.util.DisplayUtil
 
@@ -42,7 +43,7 @@ class HomeFragment : Fragment() {
 
         setupWebView()
         setupGestureDetector()
-        fixBlackBarIssue()
+        setupTransparentStatusBar()
 
         imageButtonConfig.setOnClickListener {
             PasswordDialog.showPasswordDialog(requireContext(), 
@@ -78,7 +79,13 @@ class HomeFragment : Fragment() {
         webView.settings.allowContentAccess = true
         webView.settings.setSupportMultipleWindows(true)
 
-        webView.webViewClient = WebViewClient()
+        webView.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                // Inject edge-to-edge viewport after page loads
+                injectEdgeToEdgeViewport()
+            }
+        }
         
         // Custom WebChromeClient for fullscreen video support
         webView.webChromeClient = object : WebChromeClient() {
@@ -146,28 +153,58 @@ class HomeFragment : Fragment() {
         })
     }
 
-    private fun fixBlackBarIssue() {
-        // Use direct layout manipulation to extend WebView to screen edges
-        val layoutParams = webView.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
+    private fun setupTransparentStatusBar() {
+        // Force transparent status bar using WindowManager flags
+        requireActivity().window.addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
+        requireActivity().window.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
         
-        // Get status bar height to extend WebView under it
-        val statusBarHeight = getStatusBarHeight()
-        layoutParams.topMargin = -statusBarHeight
+        // Extend WebView to full screen edges
+        val layoutParams = webView.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
+        layoutParams.topMargin = 0
+        layoutParams.bottomMargin = 0
         webView.layoutParams = layoutParams
         
-        // Add top padding to WebView content to avoid content being hidden under status bar
-        webView.setPadding(0, statusBarHeight, 0, 0)
-        webView.clipToPadding = false
+        // Remove any padding that blocks content
+        webView.setPadding(0, 0, 0, 0)
+        
+        // Inject viewport meta tag for edge-to-edge rendering
+        injectEdgeToEdgeViewport()
     }
-
-    private fun getStatusBarHeight(): Int {
-        val resourceId = resources.getIdentifier("status_bar_height", "dimen", "android")
-        return if (resourceId > 0) {
-            resources.getDimensionPixelSize(resourceId)
-        } else {
-            // Fallback for devices where status bar height can't be determined
-            (24 * resources.displayMetrics.density).toInt()
-        }
+    
+    private fun injectEdgeToEdgeViewport() {
+        // Inject CSS and viewport meta tag via JavaScript to force edge-to-edge rendering
+        webView.evaluateJavascript("""
+            (function() {
+                // Remove existing viewport meta if present
+                var existingViewport = document.querySelector('meta[name="viewport"]');
+                if (existingViewport) {
+                    existingViewport.remove();
+                }
+                
+                // Add edge-to-edge viewport meta tag
+                var viewport = document.createElement('meta');
+                viewport.name = 'viewport';
+                viewport.content = 'width=device-width, initial-scale=1.0, viewport-fit=cover';
+                document.head.appendChild(viewport);
+                
+                // Add CSS to handle safe area insets
+                var style = document.createElement('style');
+                style.textContent = `
+                    body {
+                        margin: 0;
+                        padding: 0;
+                        padding-top: env(safe-area-inset-top, 0px);
+                        padding-bottom: env(safe-area-inset-bottom, 0px);
+                    }
+                    * { 
+                        -webkit-box-sizing: border-box;
+                        -moz-box-sizing: border-box;
+                        box-sizing: border-box;
+                    }
+                `;
+                document.head.appendChild(style);
+            })();
+        """, null)
     }
 
     private fun toggleConfigButtonVisibility() {

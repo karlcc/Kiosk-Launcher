@@ -21,7 +21,7 @@ class KioskUtil {
                 context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
             val myDeviceAdmin = ComponentName(context, MyDeviceAdminReceiver::class.java)
 
-            // Enable fullscreen mode when starting kiosk (if user preference allows)
+            // Enable fullscreen mode when starting kiosk
             enableKioskFullscreen(context)
 
             if (devicePolicyManager.isAdminActive(myDeviceAdmin)) {
@@ -103,35 +103,21 @@ class KioskUtil {
         
         private fun enableKioskFullscreen(activity: Activity) {
             try {
-                // Check user preference for fullscreen mode
-                val sharedPreferences = activity.getSharedPreferences("kiosk_settings", Context.MODE_PRIVATE)
-                val fullscreenEnabled = sharedPreferences.getBoolean("kiosk_fullscreen_enabled", true)
+                DebugLogger.log("KioskUtil: Enabling kiosk fullscreen mode")
                 
-                DebugLogger.log("KioskUtil: Enabling kiosk mode with fullscreen: $fullscreenEnabled")
+                // Apply our proven fullscreen approach
+                activity.window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+                activity.window.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
                 
-                if (fullscreenEnabled) {
-                    // Apply fullscreen approach (hide status bar)
-                    activity.window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
-                    activity.window.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
-                    
-                    // Clear conflicting flags
-                    activity.window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
-                    activity.window.clearFlags(WindowManager.LayoutParams.FLAG_FORCE_NOT_FULLSCREEN)
-                    
-                    DebugLogger.log("KioskUtil: Fullscreen kiosk flags applied")
-                } else {
-                    // Normal mode - keep status bar visible
-                    activity.window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
-                    activity.window.clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
-                    activity.window.addFlags(WindowManager.LayoutParams.FLAG_FORCE_NOT_FULLSCREEN)
-                    
-                    DebugLogger.log("KioskUtil: Normal kiosk mode (status bar visible)")
-                }
+                // Clear conflicting flags
+                activity.window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
+                activity.window.clearFlags(WindowManager.LayoutParams.FLAG_FORCE_NOT_FULLSCREEN)
                 
+                DebugLogger.log("KioskUtil: Kiosk fullscreen flags applied")
                 DebugLogger.logStatusBarState(activity)
                 
             } catch (e: Exception) {
-                DebugLogger.logError("KioskUtil: Error configuring kiosk display mode", e)
+                DebugLogger.logError("KioskUtil: Error enabling kiosk fullscreen", e)
             }
         }
         

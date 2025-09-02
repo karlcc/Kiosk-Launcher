@@ -103,7 +103,11 @@ class ConfigFragment : Fragment() {
         switchFullscreenKiosk.setOnCheckedChangeListener { _, isChecked ->
             DebugLogger.log("ConfigFragment: Fullscreen kiosk setting changed to: $isChecked")
             sharedPreferences.edit().putBoolean("kiosk_fullscreen_enabled", isChecked).apply()
-            Toast.makeText(context, if (isChecked) "Fullscreen mode enabled for kiosk" else "Normal mode enabled for kiosk", Toast.LENGTH_SHORT).show()
+            
+            // Apply the display mode change immediately
+            KioskUtil.applyDisplayMode(requireActivity())
+            
+            Toast.makeText(context, if (isChecked) "Fullscreen mode enabled - applied immediately" else "Normal mode enabled - applied immediately", Toast.LENGTH_SHORT).show()
         }
 
         buttonBackToHome.setOnClickListener {

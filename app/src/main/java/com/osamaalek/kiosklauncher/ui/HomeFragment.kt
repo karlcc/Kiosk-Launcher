@@ -149,7 +149,7 @@ class HomeFragment : Fragment() {
                 customViewCallback = null
                 
                 // Restore system UI to user's configured display settings
-                DisplayUtil.applyDisplaySettings(requireActivity(), requireContext())
+                // DisplayUtil.applyDisplaySettings(requireActivity(), requireContext()) // Disabled - conflicts with fullscreen mode
             }
         }
 

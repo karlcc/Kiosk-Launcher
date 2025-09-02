@@ -12,13 +12,13 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        DisplayUtil.applyDisplaySettings(this, this)
+        // DisplayUtil.applyDisplaySettings(this, this) // Disabled - conflicts with fullscreen mode
         KioskUtil.startKioskMode(this)
     }
 
     override fun onResume() {
         super.onResume()
-        DisplayUtil.applyDisplaySettings(this, this)
+        // DisplayUtil.applyDisplaySettings(this, this) // Disabled - conflicts with fullscreen mode
     }
 
     override fun onBackPressed() {

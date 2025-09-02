@@ -192,17 +192,40 @@
     </LinearLayout>
 
     <TextView
-        android:id="@+id/textView_current_password"
+        android:id="@+id/textView_display_label"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="32dp"
+        android:text="Kiosk Display Mode:"
+        android:textSize="16sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/kiosk_controls_container2" />
+
+    <Switch
+        android:id="@+id/switch_fullscreen_kiosk"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Enable Fullscreen Mode (Hide Status Bar)"
+        android:textSize="14sp"
+        android:checked="true"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textView_display_label" />
+
+    <TextView
+        android:id="@+id/textView_current_password"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
         android:text="Current password: admin123"
         android:textSize="14sp"
         android:textStyle="italic"
         android:gravity="center"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/kiosk_controls_container2" />
+        app:layout_constraintTop_toBottomOf="@+id/switch_fullscreen_kiosk" />
 
     <Button
         android:id="@+id/button_back_to_home"

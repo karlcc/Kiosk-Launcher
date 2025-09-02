@@ -15,11 +15,25 @@ object DebugLogger {
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US)
     
     fun init(context: Context) {
+        setContext(context)
         log("=== KIOSK LAUNCHER DEBUG SESSION STARTED ===")
         log("Device Info:")
         log("- Android Version: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
         log("- Device: ${Build.MANUFACTURER} ${Build.MODEL}")
         log("- App Version: ${getAppVersion(context)}")
+        
+        // Log the actual file path for user reference
+        try {
+            val appExternalDir = context.getExternalFilesDir(null)
+            if (appExternalDir != null) {
+                log("- Log File: ${appExternalDir.absolutePath}/$LOG_FILE_NAME")
+            } else {
+                log("- Log File: /storage/emulated/0/$LOG_FILE_NAME (if accessible)")
+            }
+        } catch (e: Exception) {
+            log("- Log File: Check logcat for details")
+        }
+        
         log("============================================")
     }
     
@@ -81,16 +95,47 @@ object DebugLogger {
     
     private fun writeToFile(message: String) {
         try {
-            val externalDir = Environment.getExternalStorageDirectory()
-            val logFile = File(externalDir, LOG_FILE_NAME)
-            
-            FileWriter(logFile, true).use { writer ->
-                writer.appendLine(message)
-                writer.flush()
+            // Try external storage first
+            if (Environment.getExternalStorageState() == Environment.MEDIA_MOUNTED) {
+                val externalDir = Environment.getExternalStorageDirectory()
+                val logFile = File(externalDir, LOG_FILE_NAME)
+                FileWriter(logFile, true).use { writer ->
+                    writer.appendLine(message)
+                    writer.flush()
+                }
+                return
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to write to log file: ${e.message}")
+            Log.e(TAG, "Failed to write to external storage: ${e.message}")
         }
+        
+        // Fallback to app-specific external directory
+        try {
+            val context = getCurrentContext()
+            context?.let {
+                val appExternalDir = it.getExternalFilesDir(null)
+                if (appExternalDir != null) {
+                    val logFile = File(appExternalDir, LOG_FILE_NAME)
+                    FileWriter(logFile, true).use { writer ->
+                        writer.appendLine(message)
+                        writer.flush()
+                    }
+                    Log.d(TAG, "Log written to: ${logFile.absolutePath}")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to write to app external directory: ${e.message}")
+        }
+    }
+    
+    private var contextRef: Context? = null
+    
+    fun setContext(context: Context) {
+        contextRef = context.applicationContext
+    }
+    
+    private fun getCurrentContext(): Context? {
+        return contextRef
     }
     
     private fun getAppVersion(context: Context): String {

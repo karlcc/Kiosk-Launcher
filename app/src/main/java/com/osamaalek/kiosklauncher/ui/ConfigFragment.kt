@@ -28,6 +28,7 @@ class ConfigFragment : Fragment() {
     private lateinit var buttonSaveUrl: Button
     private lateinit var buttonBackToHome: Button
     private lateinit var textViewCurrentPassword: TextView
+    private lateinit var switchFullscreenKiosk: Switch
     private lateinit var sharedPreferences: SharedPreferences
 
     override fun onCreateView(
@@ -43,6 +44,7 @@ class ConfigFragment : Fragment() {
         buttonSaveUrl = v.findViewById(R.id.button_save_url)
         buttonBackToHome = v.findViewById(R.id.button_back_to_home)
         textViewCurrentPassword = v.findViewById(R.id.textView_current_password)
+        switchFullscreenKiosk = v.findViewById(R.id.switch_fullscreen_kiosk)
 
         sharedPreferences = requireContext().getSharedPreferences("kiosk_settings", Context.MODE_PRIVATE)
 
@@ -50,10 +52,14 @@ class ConfigFragment : Fragment() {
         val savedUrl = sharedPreferences.getString("webview_url", "https://www.google.com")
         editTextUrl.setText(savedUrl)
 
+        // Load fullscreen preference
+        val fullscreenEnabled = sharedPreferences.getBoolean("kiosk_fullscreen_enabled", true)
+        switchFullscreenKiosk.isChecked = fullscreenEnabled
+
         val currentPassword = PasswordDialog.getCurrentPassword(requireContext())
         textViewCurrentPassword.text = "Current password: $currentPassword"
         
-        DebugLogger.log("ConfigFragment: Display settings removed for kiosk mode management")
+        DebugLogger.log("ConfigFragment: Fullscreen kiosk setting loaded: $fullscreenEnabled")
 
         fabApps.setOnClickListener {
             requireActivity().supportFragmentManager.beginTransaction()
@@ -92,6 +98,12 @@ class ConfigFragment : Fragment() {
             } else {
                 Toast.makeText(context, "Please enter a valid URL", Toast.LENGTH_SHORT).show()
             }
+        }
+
+        switchFullscreenKiosk.setOnCheckedChangeListener { _, isChecked ->
+            DebugLogger.log("ConfigFragment: Fullscreen kiosk setting changed to: $isChecked")
+            sharedPreferences.edit().putBoolean("kiosk_fullscreen_enabled", isChecked).apply()
+            Toast.makeText(context, if (isChecked) "Fullscreen mode enabled for kiosk" else "Normal mode enabled for kiosk", Toast.LENGTH_SHORT).show()
         }
 
         buttonBackToHome.setOnClickListener {

@@ -12,8 +12,26 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // Initialize default display settings on first launch
+        initializeDefaultSettings()
+        
         DisplayUtil.applyDisplaySettings(this, this)
         KioskUtil.startKioskMode(this)
+    }
+    
+    private fun initializeDefaultSettings() {
+        val sharedPreferences = getSharedPreferences("kiosk_settings", MODE_PRIVATE)
+        
+        // Check if this is first launch by looking for a "first_launch" key
+        val isFirstLaunch = sharedPreferences.getBoolean("first_launch", true)
+        
+        if (isFirstLaunch) {
+            // Set optimal default settings for kiosk mode
+            DisplayUtil.saveDisplaySettings(this, false, true) // hideStatusBar=false, fullscreenMode=true
+            
+            // Mark that we've initialized the settings
+            sharedPreferences.edit().putBoolean("first_launch", false).apply()
+        }
     }
 
     override fun onResume() {

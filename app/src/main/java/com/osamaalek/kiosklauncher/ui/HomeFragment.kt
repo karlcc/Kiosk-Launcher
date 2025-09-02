@@ -13,6 +13,8 @@ import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import android.widget.ImageButton
 import androidx.fragment.app.Fragment
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import com.osamaalek.kiosklauncher.R
 import com.osamaalek.kiosklauncher.util.DisplayUtil
 
@@ -24,6 +26,7 @@ class HomeFragment : Fragment() {
     private var customView: View? = null
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
     private var originalOrientation: Int = 0
+    private var isConfigButtonVisible: Boolean = true
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreateView(
@@ -37,6 +40,7 @@ class HomeFragment : Fragment() {
         sharedPreferences = requireContext().getSharedPreferences("kiosk_settings", Context.MODE_PRIVATE)
 
         setupWebView()
+        setupWindowInsets(v)
 
         imageButtonConfig.setOnClickListener {
             PasswordDialog.showPasswordDialog(requireContext(), 
@@ -45,6 +49,11 @@ class HomeFragment : Fragment() {
                         .replace(R.id.fragmentContainerView, ConfigFragment()).commit()
                 }
             )
+        }
+
+        // Add touch listener to toggle config button visibility
+        webView.setOnClickListener {
+            toggleConfigButtonVisibility()
         }
 
         return v
@@ -123,6 +132,27 @@ class HomeFragment : Fragment() {
         // Load URL from SharedPreferences
         val url = sharedPreferences.getString("webview_url", "https://www.google.com")
         url?.let { webView.loadUrl(it) }
+    }
+
+    private fun setupWindowInsets(rootView: View) {
+        ViewCompat.setOnApplyWindowInsetsListener(rootView) { _, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            
+            // Apply padding to avoid black bars
+            webView.setPadding(0, systemBars.top, 0, 0)
+            
+            // Adjust config button position to account for system bars
+            val layoutParams = imageButtonConfig.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
+            layoutParams.topMargin = 8 + systemBars.top
+            imageButtonConfig.layoutParams = layoutParams
+            
+            insets
+        }
+    }
+
+    private fun toggleConfigButtonVisibility() {
+        isConfigButtonVisible = !isConfigButtonVisible
+        imageButtonConfig.visibility = if (isConfigButtonVisible) View.VISIBLE else View.GONE
     }
 
     override fun onResume() {

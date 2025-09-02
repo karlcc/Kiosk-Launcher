@@ -19,6 +19,8 @@ import android.view.WindowManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import com.osamaalek.kiosklauncher.R
 import com.osamaalek.kiosklauncher.util.DisplayUtil
 import com.osamaalek.kiosklauncher.util.DebugLogger
@@ -51,7 +53,7 @@ class HomeFragment : Fragment() {
         
         setupWebView()
         setupGestureDetector()
-        setupStatusBarHiding()
+        setupTransparentStatusBar(v)
 
         imageButtonConfig.setOnClickListener {
             PasswordDialog.showPasswordDialog(requireContext(), 
@@ -167,133 +169,97 @@ class HomeFragment : Fragment() {
         })
     }
 
-    private fun setupStatusBarHiding() {
-        DebugLogger.log("Setting up status bar hiding for Android ${Build.VERSION.SDK_INT}")
+    private fun setupTransparentStatusBar(rootView: View) {
+        DebugLogger.log("Setting up transparent status bar with proper inset handling")
         
-        // Log initial state
-        DebugLogger.logStatusBarState(requireActivity())
-        
-        try {
-            // Use FLAG_FULLSCREEN for reliable status bar hiding across all Android versions
-            requireActivity().window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
-            requireActivity().window.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
+        ViewCompat.setOnApplyWindowInsetsListener(rootView) { v, insets ->
+            val statusBarInsets = insets.getInsets(WindowInsetsCompat.Type.statusBars())
+            val navigationBarInsets = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
             
-            DebugLogger.log("Applied FLAG_FULLSCREEN and FLAG_LAYOUT_NO_LIMITS")
+            DebugLogger.log("Status bar insets - top: ${statusBarInsets.top}px, left: ${statusBarInsets.left}px")
+            DebugLogger.log("Navigation bar insets - left: ${navigationBarInsets.left}px, bottom: ${navigationBarInsets.bottom}px, right: ${navigationBarInsets.right}px")
             
-            // Clear any conflicting flags
-            requireActivity().window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
-            requireActivity().window.clearFlags(WindowManager.LayoutParams.FLAG_FORCE_NOT_FULLSCREEN)
+            try {
+                // Use layout margins instead of padding to preserve WebView's touch area
+                val webViewLayoutParams = webView.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
+                webViewLayoutParams.topMargin = statusBarInsets.top
+                webViewLayoutParams.leftMargin = navigationBarInsets.left
+                webViewLayoutParams.bottomMargin = navigationBarInsets.bottom
+                webViewLayoutParams.rightMargin = navigationBarInsets.right
+                webView.layoutParams = webViewLayoutParams
+                
+                // Adjust config button position to account for insets
+                val configButtonParams = imageButtonConfig.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
+                configButtonParams.topMargin = (8 + statusBarInsets.top)
+                configButtonParams.leftMargin = (8 + navigationBarInsets.left)
+                imageButtonConfig.layoutParams = configButtonParams
+                
+                DebugLogger.log("Layout margins applied successfully")
+                
+                // Inject CSS safe-area viewport for web content positioning
+                injectSafeAreaViewport(statusBarInsets.top, navigationBarInsets.left, navigationBarInsets.bottom, navigationBarInsets.right)
+                
+            } catch (e: Exception) {
+                DebugLogger.logError("Error applying inset margins", e)
+            }
             
-            // Extend WebView to full screen
-            val layoutParams = webView.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
-            layoutParams.topMargin = 0
-            layoutParams.bottomMargin = 0
-            webView.layoutParams = layoutParams
-            
-            DebugLogger.log("WebView layout updated for fullscreen")
-            
-            // Remove any padding
-            webView.setPadding(0, 0, 0, 0)
-            
-            // Schedule to override DisplayUtil after a delay
-            Handler(Looper.getMainLooper()).postDelayed({
-                overrideDisplayUtilSettings()
-            }, 500)
-            
-        } catch (e: Exception) {
-            DebugLogger.logError("Error in setupStatusBarHiding", e)
+            insets
         }
     }
     
-    private fun overrideDisplayUtilSettings() {
-        try {
-            DebugLogger.log("Overriding DisplayUtil settings")
-            
-            // Re-apply our fullscreen flags after DisplayUtil might have changed them
-            requireActivity().window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
-            requireActivity().window.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
-            
-            // Log state after override
-            DebugLogger.logStatusBarState(requireActivity())
-            DebugLogger.logWebViewState(webView)
-            
-            // Inject CSS with fixed pixel padding
-            injectFixedPixelViewport()
-            
-        } catch (e: Exception) {
-            DebugLogger.logError("Error in overrideDisplayUtilSettings", e)
-        }
-    }
-    
-    private fun injectFixedPixelViewport() {
-        // Get status bar height for fixed pixel padding (Android 4.4+ compatible)
-        val statusBarHeight = getStatusBarHeight()
-        DebugLogger.log("Injecting fixed pixel viewport with statusBarHeight: ${statusBarHeight}px")
+    private fun injectSafeAreaViewport(topInset: Int, leftInset: Int, bottomInset: Int, rightInset: Int) {
+        DebugLogger.log("Injecting safe-area viewport: top=$topInset, left=$leftInset, bottom=$bottomInset, right=$rightInset")
         
         webView.evaluateJavascript("""
             (function() {
-                console.log('KioskLauncher: Injecting viewport fixes');
+                console.log('KioskLauncher: Injecting safe-area viewport');
                 
-                // Remove existing viewport meta if present
+                // Remove existing viewport and styles
                 var existingViewport = document.querySelector('meta[name="viewport"]');
-                if (existingViewport) {
-                    existingViewport.remove();
-                }
+                if (existingViewport) existingViewport.remove();
                 
-                // Add viewport meta tag for proper scaling
+                var existingStyle = document.querySelector('#kiosk-safe-area-fix');
+                if (existingStyle) existingStyle.remove();
+                
+                // Add proper viewport meta tag
                 var viewport = document.createElement('meta');
                 viewport.name = 'viewport';
-                viewport.content = 'width=device-width, initial-scale=1.0, user-scalable=no';
-                if (document.head) {
-                    document.head.appendChild(viewport);
-                }
+                viewport.content = 'width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover';
+                if (document.head) document.head.appendChild(viewport);
                 
-                // Add CSS with fixed pixel padding for status bar area
+                // Add CSS using safe-area-inset properties for modern approach
                 var style = document.createElement('style');
-                style.id = 'kiosk-status-bar-fix';
+                style.id = 'kiosk-safe-area-fix';
                 style.textContent = 
+                    ':root { ' +
+                    '  --safe-area-inset-top: ' + ${topInset} + 'px; ' +
+                    '  --safe-area-inset-left: ' + ${leftInset} + 'px; ' +
+                    '  --safe-area-inset-bottom: ' + ${bottomInset} + 'px; ' +
+                    '  --safe-area-inset-right: ' + ${rightInset} + 'px; ' +
+                    '} ' +
                     'body { ' +
                     '  margin: 0 !important; ' +
-                    '  padding: 0 !important; ' +
+                    '  padding: var(--safe-area-inset-top) var(--safe-area-inset-right) var(--safe-area-inset-bottom) var(--safe-area-inset-left) !important; ' +
                     '  box-sizing: border-box !important; ' +
+                    '  min-height: 100vh !important; ' +
                     '} ' +
-                    'html, body { ' +
+                    'html { ' +
                     '  height: 100% !important; ' +
                     '  overflow-x: hidden !important; ' +
-                    '} ' +
-                    '* { ' +
-                    '  -webkit-box-sizing: border-box !important; ' +
-                    '  -moz-box-sizing: border-box !important; ' +
-                    '  box-sizing: border-box !important; ' +
                     '}';
                     
                 if (document.head) {
                     document.head.appendChild(style);
                 } else {
-                    // Fallback if head is not ready
                     document.addEventListener('DOMContentLoaded', function() {
                         document.head.appendChild(style);
                     });
                 }
                 
-                console.log('KioskLauncher: Viewport injection complete');
+                console.log('KioskLauncher: Safe-area viewport injection complete');
             })();
         """) { result ->
-            DebugLogger.log("JavaScript viewport injection result: $result")
-        }
-    }
-    
-    private fun getStatusBarHeight(): Int {
-        val resourceId = resources.getIdentifier("status_bar_height", "dimen", "android")
-        return if (resourceId > 0) {
-            val height = resources.getDimensionPixelSize(resourceId)
-            DebugLogger.log("Status bar height from resources: ${height}px")
-            height
-        } else {
-            // Fallback calculation based on density
-            val fallbackHeight = (24 * resources.displayMetrics.density).toInt()
-            DebugLogger.log("Status bar height fallback: ${fallbackHeight}px")
-            fallbackHeight
+            DebugLogger.log("JavaScript safe-area injection result: $result")
         }
     }
 

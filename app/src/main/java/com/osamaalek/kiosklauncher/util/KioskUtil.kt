@@ -20,12 +20,6 @@ class KioskUtil {
 
             if (devicePolicyManager.isAdminActive(myDeviceAdmin)) {
                 context.startLockTask()
-                
-                // Mark that we're now in kiosk mode for auto-resume functionality
-                val sharedPreferences = context.getSharedPreferences("kiosk_settings", Context.MODE_PRIVATE)
-                sharedPreferences.edit().putBoolean("was_in_kiosk_mode", true).apply()
-                DebugLogger.log("Kiosk mode started - marked for potential auto-resume")
-                
             } else {
                 context.startActivity(
                     Intent().setComponent(
@@ -63,11 +57,6 @@ class KioskUtil {
             val myDeviceAdmin = ComponentName(context, MyDeviceAdminReceiver::class.java)
             if (devicePolicyManager.isAdminActive(myDeviceAdmin)) {
                 context.stopLockTask()
-                
-                // Clear the kiosk mode flag when explicitly stopped by user
-                val sharedPreferences = context.getSharedPreferences("kiosk_settings", Context.MODE_PRIVATE)
-                sharedPreferences.edit().putBoolean("was_in_kiosk_mode", false).apply()
-                DebugLogger.log("Kiosk mode stopped - auto-resume disabled")
             }
             if (devicePolicyManager.isDeviceOwnerApp(context.packageName)) {
                 devicePolicyManager.clearUserRestriction(

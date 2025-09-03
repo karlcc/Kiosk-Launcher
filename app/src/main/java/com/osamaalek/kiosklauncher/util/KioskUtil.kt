@@ -42,6 +42,22 @@ class KioskUtil {
 
             if (devicePolicyManager.isAdminActive(myDeviceAdmin)) {
                 context.startLockTask()
+                
+                // Only apply device owner features if available
+                if (devicePolicyManager.isDeviceOwnerApp(context.packageName)) {
+                    val filter = IntentFilter(Intent.ACTION_MAIN)
+                    filter.addCategory(Intent.CATEGORY_HOME)
+                    filter.addCategory(Intent.CATEGORY_DEFAULT)
+                    val activity = ComponentName(context, MainActivity::class.java)
+                    devicePolicyManager.addPersistentPreferredActivity(myDeviceAdmin, filter, activity)
+
+                    val appsWhiteList = arrayOf("com.osamaalek.kiosklauncher")
+                    devicePolicyManager.setLockTaskPackages(myDeviceAdmin, appsWhiteList)
+
+                    devicePolicyManager.addUserRestriction(
+                        myDeviceAdmin, UserManager.DISALLOW_UNINSTALL_APPS
+                    )
+                }
             } else {
                 context.startActivity(
                     Intent().setComponent(
@@ -50,26 +66,6 @@ class KioskUtil {
                         )
                     )
                 )
-            }
-            if (devicePolicyManager.isDeviceOwnerApp(context.packageName)) {
-                val filter = IntentFilter(Intent.ACTION_MAIN)
-                filter.addCategory(Intent.CATEGORY_HOME)
-                filter.addCategory(Intent.CATEGORY_DEFAULT)
-                val activity = ComponentName(context, MainActivity::class.java)
-                devicePolicyManager.addPersistentPreferredActivity(myDeviceAdmin, filter, activity)
-
-                //
-                val appsWhiteList = arrayOf("com.osamaalek.kiosklauncher")
-                devicePolicyManager.setLockTaskPackages(myDeviceAdmin, appsWhiteList)
-
-                devicePolicyManager.addUserRestriction(
-                    myDeviceAdmin, UserManager.DISALLOW_UNINSTALL_APPS
-                )
-
-            } else {
-                Toast.makeText(
-                    context, "This app is not an owner device", Toast.LENGTH_SHORT
-                ).show()
             }
         }
 

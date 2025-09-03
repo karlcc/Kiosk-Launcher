@@ -65,6 +65,13 @@ class MainActivity : AppCompatActivity() {
         
         DisplayUtil.applyDisplaySettings(this, this)
     }
+
+    override fun onStop() {
+        super.onStop()
+        Handler(Looper.getMainLooper()).post {
+            Toast.makeText(this, "Clearing temp disable, app onStop", Toast.LENGTH_LONG).show()
+        }
+    }
     
     override fun onPause() {
         super.onPause()

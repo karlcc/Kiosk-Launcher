@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.UserManager
 import android.widget.Toast
+import com.osamaalek.kiosklauncher.BuildConfig
 import com.osamaalek.kiosklauncher.MyDeviceAdminReceiver
 import com.osamaalek.kiosklauncher.ui.MainActivity
 
@@ -67,10 +68,14 @@ class KioskUtil {
                 try {
                     val appsWhiteList = arrayOf("com.osamaalek.kiosklauncher")
                     devicePolicyManager.setLockTaskPackages(myDeviceAdmin, appsWhiteList)
-                    Toast.makeText(context, "Smooth kiosk exit enabled", Toast.LENGTH_SHORT).show()
+                    if (BuildConfig.DEBUG) {
+                        Toast.makeText(context, "Smooth kiosk exit enabled", Toast.LENGTH_SHORT).show()
+                    }
                 } catch (e: SecurityException) {
                     // Device Admin insufficient - requires Device Owner for smooth exit
-                    Toast.makeText(context, "Note: Device Owner required for smooth exit", Toast.LENGTH_LONG).show()
+                    if (BuildConfig.DEBUG) {
+                        Toast.makeText(context, "Note: Device Owner required for smooth exit", Toast.LENGTH_LONG).show()
+                    }
                 }
                 
                 context.startLockTask()

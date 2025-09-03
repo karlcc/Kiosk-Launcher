@@ -1,5 +1,7 @@
 package com.osamaalek.kiosklauncher.ui
 
+import android.app.ActivityManager
+import android.content.Context
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -46,8 +48,11 @@ class MainActivity : AppCompatActivity() {
             
             // Post to message queue to ensure onResume completes before changing lock state
             Handler(Looper.getMainLooper()).post {
-                // Bypass kiosk mode check - startLockTask() is safe to call even if already active
-                KioskUtil.startKioskMode(this)
+                // Check current lock task state to prevent redundant startLockTask() calls
+                val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+                if (activityManager.lockTaskModeState == ActivityManager.LOCK_TASK_MODE_NONE) {
+                    KioskUtil.startKioskMode(this)
+                }
             }
         }
         

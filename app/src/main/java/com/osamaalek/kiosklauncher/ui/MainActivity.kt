@@ -55,11 +55,11 @@ class MainActivity : AppCompatActivity() {
             }
         }
         
-        // If user returns to app after temporary disable, auto-resume kiosk mode
+        // If user returns to app after temporary disable, clear flag for first time, no direct start kiosk
         if (KioskUtil.isKioskTemporarilyDisabled(this)) {
             Handler(Looper.getMainLooper()).post {
-                Toast.makeText(this, "Clearing temp disable and starting kiosk. TempDisabled: ${KioskUtil.isKioskTemporarilyDisabled(this)}", Toast.LENGTH_LONG).show()
-                // KioskUtil.startKioskMode(this)
+                Toast.makeText(this, "Clearing temp disable and restarting kiosk. TempDisabled: ${KioskUtil.isKioskTemporarilyDisabled(this)}", Toast.LENGTH_LONG).show()
+                KioskUtil.clearTemporaryDisable(this)
             }
         }
         

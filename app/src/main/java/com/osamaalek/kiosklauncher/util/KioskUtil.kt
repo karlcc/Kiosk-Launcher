@@ -51,8 +51,10 @@ class KioskUtil {
                 try {
                     val appsWhiteList = arrayOf("com.osamaalek.kiosklauncher")
                     devicePolicyManager.setLockTaskPackages(myDeviceAdmin, appsWhiteList)
+                    Toast.makeText(context, "Smooth kiosk exit enabled", Toast.LENGTH_SHORT).show()
                 } catch (e: SecurityException) {
-                    // Ignore if we don't have permission - will require unlock to exit
+                    // Device Admin insufficient - requires Device Owner for smooth exit
+                    Toast.makeText(context, "Note: Device Owner required for smooth exit", Toast.LENGTH_LONG).show()
                 }
                 
                 context.startLockTask()

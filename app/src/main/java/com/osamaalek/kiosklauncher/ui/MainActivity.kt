@@ -3,6 +3,7 @@ package com.osamaalek.kiosklauncher.ui
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.osamaalek.kiosklauncher.R
 import com.osamaalek.kiosklauncher.util.DisplayUtil
@@ -49,14 +50,16 @@ class MainActivity : AppCompatActivity() {
             
             // Post to message queue to ensure onResume completes before changing lock state
             Handler(Looper.getMainLooper()).post {
+                Toast.makeText(this, "Auto-resuming kiosk. TempDisabled: ${KioskUtil.isKioskTemporarilyDisabled(this)}", Toast.LENGTH_SHORT).show()
                 KioskUtil.startKioskMode(this)
             }
         }
         
-        // If user returns to app after temporary disable, auto-resume kiosk mode
+        // If user returns to app after temporary disable, clear flag for first time, no direct start kiosk
         if (KioskUtil.isKioskTemporarilyDisabled(this)) {
             Handler(Looper.getMainLooper()).post {
-                KioskUtil.startKioskMode(this)
+                Toast.makeText(this, "Clearing temp disable. TempDisabled: ${KioskUtil.isKioskTemporarilyDisabled(this)}", Toast.LENGTH_LONG).show()
+                KioskUtil.clearTemporaryDisable(this)
             }
         }
         

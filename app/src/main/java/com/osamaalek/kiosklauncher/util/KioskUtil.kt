@@ -16,6 +16,7 @@ class KioskUtil {
         
         private const val PREF_KIOSK_AUTO_RESUME = "kiosk_auto_resume"
         private const val PREF_WAS_IN_KIOSK_ON_PAUSE = "was_in_kiosk_on_pause"
+        private const val PREF_KIOSK_TEMPORARILY_DISABLED = "kiosk_temporarily_disabled"
         
         fun isAutoResumeEnabled(context: Context): Boolean {
             val prefs = context.getSharedPreferences("kiosk_settings", Context.MODE_PRIVATE)
@@ -41,6 +42,21 @@ class KioskUtil {
             val prefs = context.getSharedPreferences("kiosk_settings", Context.MODE_PRIVATE)
             prefs.edit().remove(PREF_WAS_IN_KIOSK_ON_PAUSE).apply()
         }
+        
+        fun setKioskTemporarilyDisabled(context: Context, disabled: Boolean) {
+            val prefs = context.getSharedPreferences("kiosk_settings", Context.MODE_PRIVATE)
+            prefs.edit().putBoolean(PREF_KIOSK_TEMPORARILY_DISABLED, disabled).apply()
+        }
+        
+        fun isKioskTemporarilyDisabled(context: Context): Boolean {
+            val prefs = context.getSharedPreferences("kiosk_settings", Context.MODE_PRIVATE)
+            return prefs.getBoolean(PREF_KIOSK_TEMPORARILY_DISABLED, false)
+        }
+        
+        fun clearTemporaryDisable(context: Context) {
+            val prefs = context.getSharedPreferences("kiosk_settings", Context.MODE_PRIVATE)
+            prefs.edit().remove(PREF_KIOSK_TEMPORARILY_DISABLED).apply()
+        }
         fun startKioskMode(context: Activity) {
             val devicePolicyManager =
                 context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
@@ -58,6 +74,9 @@ class KioskUtil {
                 }
                 
                 context.startLockTask()
+                
+                // Clear temporary disable when successfully starting kiosk mode
+                clearTemporaryDisable(context)
                 
                 // Device owner specific features
                 if (devicePolicyManager.isDeviceOwnerApp(context.packageName)) {
@@ -94,6 +113,8 @@ class KioskUtil {
                     myDeviceAdmin, UserManager.DISALLOW_UNINSTALL_APPS
                 )
             }
+            // Set temporary disable instead of clearing state completely
+            setKioskTemporarilyDisabled(context, true)
             clearKioskPausedState(context)
         }
 

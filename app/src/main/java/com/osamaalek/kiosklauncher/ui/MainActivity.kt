@@ -40,13 +40,22 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         
         // Check if we should auto-resume kiosk mode
-        if (KioskUtil.isAutoResumeEnabled(this) && KioskUtil.wasInKioskModeBeforePause(this)) {
+        // Only auto-resume if not temporarily disabled (user didn't explicitly exit)
+        if (KioskUtil.isAutoResumeEnabled(this) && 
+            KioskUtil.wasInKioskModeBeforePause(this) && 
+            !KioskUtil.isKioskTemporarilyDisabled(this)) {
             // Clear the flag immediately to prevent re-triggering
             KioskUtil.clearKioskPausedState(this)
             
             // Post to message queue to ensure onResume completes before changing lock state
             Handler(Looper.getMainLooper()).post {
-                // Bypass kiosk mode check - startLockTask() is safe to call even if already active
+                KioskUtil.startKioskMode(this)
+            }
+        }
+        
+        // If user returns to app after temporary disable, auto-resume kiosk mode
+        if (KioskUtil.isKioskTemporarilyDisabled(this)) {
+            Handler(Looper.getMainLooper()).post {
                 KioskUtil.startKioskMode(this)
             }
         }

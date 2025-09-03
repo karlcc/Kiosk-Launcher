@@ -46,9 +46,8 @@ class MainActivity : AppCompatActivity() {
             
             // Post to message queue to ensure onResume completes before changing lock state
             Handler(Looper.getMainLooper()).post {
-                if (!KioskUtil.isKioskModeActive(this)) {
-                    KioskUtil.startKioskMode(this)
-                }
+                // Bypass kiosk mode check - startLockTask() is safe to call even if already active
+                KioskUtil.startKioskMode(this)
             }
         }
         

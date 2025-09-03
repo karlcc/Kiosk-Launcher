@@ -76,6 +76,8 @@ class ConfigFragment : Fragment() {
         }
 
         fabExitKiosk.setOnClickListener {
+            // Clear auto-resume state BEFORE stopping kiosk to prevent loop
+            KioskUtil.clearKioskPausedState(requireContext())
             KioskUtil.stopKioskMode(requireActivity())
         }
 

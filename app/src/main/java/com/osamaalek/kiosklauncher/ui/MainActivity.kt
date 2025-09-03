@@ -58,7 +58,10 @@ class MainActivity : AppCompatActivity() {
         super.onPause()
         
         // Only set flag if pausing while in kiosk mode AND not due to configuration changes
-        if (KioskUtil.isKioskModeActive(this) && !isChangingConfigurations()) {
+        // AND auto-resume is enabled (no point setting flag if auto-resume is disabled)
+        if (KioskUtil.isKioskModeActive(this) && 
+            !isChangingConfigurations() && 
+            KioskUtil.isAutoResumeEnabled(this)) {
             KioskUtil.setKioskPausedState(this, true)
         }
     }

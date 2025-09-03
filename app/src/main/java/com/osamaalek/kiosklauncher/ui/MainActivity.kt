@@ -1,16 +1,14 @@
 package com.osamaalek.kiosklauncher.ui
 
-import android.content.IntentFilter
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import androidx.appcompat.app.AppCompatActivity
 import com.osamaalek.kiosklauncher.R
-import com.osamaalek.kiosklauncher.receiver.ScreenUnlockReceiver
 import com.osamaalek.kiosklauncher.util.DisplayUtil
 import com.osamaalek.kiosklauncher.util.KioskUtil
 
 class MainActivity : AppCompatActivity() {
-
-    private val screenUnlockReceiver = ScreenUnlockReceiver()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,21 +39,18 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         
-        // Register the receiver to listen for unlock events
-        val filter = IntentFilter(android.content.Intent.ACTION_USER_PRESENT)
-        registerReceiver(screenUnlockReceiver, filter)
-        
-        // Check if we should re-enter kiosk mode
-        if (KioskUtil.isAutoResumeEnabled(this) &&
-            KioskUtil.wasInKioskModeBeforePause &&
-            KioskUtil.screenUnlockedSincePause) {
+        // Check if we should auto-resume kiosk mode
+        if (KioskUtil.isAutoResumeEnabled(this) && KioskUtil.wasInKioskModeBeforePause(this)) {
+            // Clear the flag immediately to prevent re-triggering
+            KioskUtil.clearKioskPausedState(this)
             
-            KioskUtil.startKioskMode(this)
+            // Post to message queue to ensure onResume completes before changing lock state
+            Handler(Looper.getMainLooper()).post {
+                if (!KioskUtil.isKioskModeActive(this)) {
+                    KioskUtil.startKioskMode(this)
+                }
+            }
         }
-        
-        // Always reset flags on resume to prevent stale state
-        KioskUtil.wasInKioskModeBeforePause = false
-        KioskUtil.screenUnlockedSincePause = false
         
         DisplayUtil.applyDisplaySettings(this, this)
     }
@@ -63,16 +58,9 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         
-        // Set the flag if we are pausing while in kiosk mode
-        if (KioskUtil.isKioskModeActive(this)) {
-            KioskUtil.wasInKioskModeBeforePause = true
-        }
-        
-        // Unregister the receiver to save resources and prevent leaks
-        try {
-            unregisterReceiver(screenUnlockReceiver)
-        } catch (e: IllegalArgumentException) {
-            // Receiver was not registered, ignore
+        // Only set flag if pausing while in kiosk mode AND not due to configuration changes
+        if (KioskUtil.isKioskModeActive(this) && !isChangingConfigurations()) {
+            KioskUtil.setKioskPausedState(this, true)
         }
     }
 

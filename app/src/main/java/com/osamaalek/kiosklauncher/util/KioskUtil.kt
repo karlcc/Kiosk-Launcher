@@ -14,12 +14,8 @@ import com.osamaalek.kiosklauncher.ui.MainActivity
 class KioskUtil {
     companion object {
         
-        @Volatile
-        internal var wasInKioskModeBeforePause = false
-        @Volatile
-        internal var screenUnlockedSincePause = false
-        
         private const val PREF_KIOSK_AUTO_RESUME = "kiosk_auto_resume"
+        private const val PREF_WAS_IN_KIOSK_ON_PAUSE = "was_in_kiosk_on_pause"
         
         fun isAutoResumeEnabled(context: Context): Boolean {
             val prefs = context.getSharedPreferences("kiosk_settings", Context.MODE_PRIVATE)
@@ -31,9 +27,19 @@ class KioskUtil {
             prefs.edit().putBoolean(PREF_KIOSK_AUTO_RESUME, enabled).apply()
         }
         
-        fun onManualKioskExit() {
-            wasInKioskModeBeforePause = false
-            screenUnlockedSincePause = false
+        fun setKioskPausedState(context: Context, wasInKiosk: Boolean) {
+            val prefs = context.getSharedPreferences("kiosk_settings", Context.MODE_PRIVATE)
+            prefs.edit().putBoolean(PREF_WAS_IN_KIOSK_ON_PAUSE, wasInKiosk).apply()
+        }
+        
+        fun wasInKioskModeBeforePause(context: Context): Boolean {
+            val prefs = context.getSharedPreferences("kiosk_settings", Context.MODE_PRIVATE)
+            return prefs.getBoolean(PREF_WAS_IN_KIOSK_ON_PAUSE, false)
+        }
+        
+        fun clearKioskPausedState(context: Context) {
+            val prefs = context.getSharedPreferences("kiosk_settings", Context.MODE_PRIVATE)
+            prefs.edit().remove(PREF_WAS_IN_KIOSK_ON_PAUSE).apply()
         }
         fun startKioskMode(context: Activity) {
             val devicePolicyManager =
@@ -81,7 +87,7 @@ class KioskUtil {
                     myDeviceAdmin, UserManager.DISALLOW_UNINSTALL_APPS
                 )
             }
-            onManualKioskExit()
+            clearKioskPausedState(context)
         }
 
         fun isKioskModeActive(context: Activity): Boolean {

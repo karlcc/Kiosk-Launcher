@@ -1,4 +1,4 @@
-name: Build Kiosk Launcher APK
+name: Build Kiosk Launcher Release APK
 
 on:
   workflow_dispatch:  # permet de lancer manuellement

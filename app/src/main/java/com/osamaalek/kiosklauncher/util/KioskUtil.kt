@@ -70,7 +70,7 @@ class KioskUtil {
                     Toast.makeText(context, "Smooth kiosk exit enabled", Toast.LENGTH_SHORT).show()
                 } catch (e: SecurityException) {
                     // Device Admin insufficient - requires Device Owner for smooth exit
-                    Toast.makeText(context, "Note: Device Owner required for smooth exit", Toast.LENGTH_LONG).show()
+                    // Toast.makeText(context, "Note: Device Owner required for smooth exit", Toast.LENGTH_LONG).show()
                 }
                 
                 context.startLockTask()

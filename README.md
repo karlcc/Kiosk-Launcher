@@ -61,19 +61,62 @@ Kiosk Launcher is an Android app that transforms any Android device into a secur
 - **Automatic Protocol**: App automatically adds HTTPS if not specified
 - **WebView Settings**: Optimized for media playback and modern web applications
 
-## Development & Technical Details
+## Development & Building
+
+### Quick Build (Development)
+```bash
+# Debug APK (with debug toast messages)
+./gradlew assembleDebug
+
+# Release APK (production, requires keystore setup)
+./gradlew assembleRelease
+```
+
+### GitHub Actions - Automated Builds
+
+This repository includes GitHub Actions workflows for automated APK building:
+
+#### 🔧 **One-Time Setup for Signed APKs**
+If you fork this repository and want to build signed, installable APKs:
+
+1. **Generate Keystore** (run once per repository)
+   - Go to Actions tab → "Generate Release Keystore" → Run workflow
+   - Download the `release-keystore` artifact when complete
+   - Extract and open `keystore-base64.txt`
+
+2. **Add GitHub Secrets**
+   - Go to Settings → Secrets and variables → Actions
+   - Add these secrets:
+     ```
+     KEYSTORE_BASE64 = [paste content from keystore-base64.txt]
+     KEYSTORE_PASSWORD = KioskLauncher2025!
+     KEY_ALIAS = release
+     KEY_PASSWORD = KioskLauncher2025!
+     ```
+
+3. **Build Signed APK**
+   - Go to Actions tab → "Build Kiosk Launcher Release APK" → Run workflow
+   - Download the signed APK from artifacts - **now installable on Android devices!** ✅
+
+#### 🚀 **Available Workflows**
+- **`build-apk.yml`**: Debug APK (auto-signed, shows debug toasts)
+- **`build-apk-release.yml`**: Release APK (requires keystore setup, production-ready)
+- **`generate-keystore.yml`**: One-time keystore generation for new forks
 
 ### Architecture
 - **Modern Android**: Built with AndroidX libraries and modern Android practices
 - **WebView Integration**: Full-featured web application support with touch preservation
 - **Display Management**: Sophisticated system for handling status bars and fullscreen modes
 - **Kiosk Security**: Device Admin integration for enterprise-grade lockdown
+- **APK Signing**: Automated keystore generation and signing for production builds
 
 ### Recent Updates (2025)
 - Upgraded to modern AndroidX WindowInsets API
 - Implemented transparent status bar with touch preservation
 - Added automatic optimal settings configuration
 - Enhanced tablet support with landscape navigation bar handling
+- **Added automated APK signing with GitHub Actions**
+- **Debug-only toast messages for development builds**
 - Removed legacy workaround code in favor of clean modern approaches
 
 ### Build Requirements
@@ -81,6 +124,7 @@ Kiosk Launcher is an Android app that transforms any Android device into a secur
 - Minimum SDK 23 (Android 6.0)
 - Compile SDK 33
 - AndroidX Core 1.9.0+
+- **GitHub Actions**: Java 11+ (automatic in workflows)
 
 ## Resources
 

@@ -5,7 +5,6 @@ import androidx.appcompat.app.AppCompatActivity
 import com.osamaalek.kiosklauncher.R
 import com.osamaalek.kiosklauncher.util.DisplayUtil
 import com.osamaalek.kiosklauncher.util.KioskUtil
-import com.osamaalek.kiosklauncher.util.DebugLogger
 
 class MainActivity : AppCompatActivity() {
 
@@ -30,18 +29,8 @@ class MainActivity : AppCompatActivity() {
             // Set optimal default settings for kiosk mode
             DisplayUtil.saveDisplaySettings(this, false, true) // hideStatusBar=false, fullscreenMode=true
             
-            // Enable auto-resume by default
-            sharedPreferences.edit()
-                .putBoolean("first_launch", false)
-                .putBoolean("auto_resume_kiosk", true)
-                .apply()
-                
-            DebugLogger.log("First launch - auto-resume enabled by default")
-        }
-        
-        // Handle auto-resume intent from KioskMonitorService
-        if (intent.getBooleanExtra("auto_resume_kiosk", false)) {
-            DebugLogger.log("MainActivity launched for auto-resume - will start kiosk mode")
+            // Mark that we've initialized the settings
+            sharedPreferences.edit().putBoolean("first_launch", false).apply()
         }
     }
 

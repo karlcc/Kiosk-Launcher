@@ -10,7 +10,6 @@ import android.os.UserManager
 import android.widget.Toast
 import com.osamaalek.kiosklauncher.MyDeviceAdminReceiver
 import com.osamaalek.kiosklauncher.ui.MainActivity
-import com.osamaalek.kiosklauncher.service.KioskMonitorService
 
 class KioskUtil {
     companion object {
@@ -21,19 +20,6 @@ class KioskUtil {
 
             if (devicePolicyManager.isAdminActive(myDeviceAdmin)) {
                 context.startLockTask()
-                
-                // Mark that we're in kiosk mode and start monitoring service
-                val sharedPreferences = context.getSharedPreferences("kiosk_settings", Context.MODE_PRIVATE)
-                sharedPreferences.edit().putBoolean("was_in_kiosk_mode", true).apply()
-                
-                // Start the monitoring service for auto-resume functionality
-                val autoResumeEnabled = sharedPreferences.getBoolean("auto_resume_kiosk", false)
-                if (autoResumeEnabled) {
-                    KioskMonitorService.startService(context)
-                }
-                
-                DebugLogger.log("Kiosk mode started - monitoring service status: $autoResumeEnabled")
-                
             } else {
                 context.startActivity(
                     Intent().setComponent(
@@ -71,15 +57,6 @@ class KioskUtil {
             val myDeviceAdmin = ComponentName(context, MyDeviceAdminReceiver::class.java)
             if (devicePolicyManager.isAdminActive(myDeviceAdmin)) {
                 context.stopLockTask()
-                
-                // Clear kiosk mode flag and stop monitoring service
-                val sharedPreferences = context.getSharedPreferences("kiosk_settings", Context.MODE_PRIVATE)
-                sharedPreferences.edit().putBoolean("was_in_kiosk_mode", false).apply()
-                
-                // Stop the monitoring service
-                KioskMonitorService.stopService(context)
-                
-                DebugLogger.log("Kiosk mode stopped - monitoring service stopped")
             }
             if (devicePolicyManager.isDeviceOwnerApp(context.packageName)) {
                 devicePolicyManager.clearUserRestriction(

@@ -43,6 +43,7 @@ class MainActivity : AppCompatActivity() {
         // Check if we should auto-resume kiosk mode
         // Only auto-resume if not temporarily disabled (user didn't explicitly exit)
         if (KioskUtil.isAutoResumeEnabled(this) && 
+            // look like do no required complicate logic, test comment following line
             // KioskUtil.wasInKioskModeBeforePause(this) && 
             !KioskUtil.isKioskTemporarilyDisabled(this)) {
             // Clear the flag immediately to prevent re-triggering

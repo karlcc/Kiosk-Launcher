@@ -47,18 +47,23 @@ class KioskUtil {
             val myDeviceAdmin = ComponentName(context, MyDeviceAdminReceiver::class.java)
 
             if (devicePolicyManager.isAdminActive(myDeviceAdmin)) {
+                // Set lock task packages to allow smooth exit without unlock prompt
+                try {
+                    val appsWhiteList = arrayOf("com.osamaalek.kiosklauncher")
+                    devicePolicyManager.setLockTaskPackages(myDeviceAdmin, appsWhiteList)
+                } catch (e: SecurityException) {
+                    // Ignore if we don't have permission - will require unlock to exit
+                }
+                
                 context.startLockTask()
                 
-                // Only apply device owner features if available
+                // Device owner specific features
                 if (devicePolicyManager.isDeviceOwnerApp(context.packageName)) {
                     val filter = IntentFilter(Intent.ACTION_MAIN)
                     filter.addCategory(Intent.CATEGORY_HOME)
                     filter.addCategory(Intent.CATEGORY_DEFAULT)
                     val activity = ComponentName(context, MainActivity::class.java)
                     devicePolicyManager.addPersistentPreferredActivity(myDeviceAdmin, filter, activity)
-
-                    val appsWhiteList = arrayOf("com.osamaalek.kiosklauncher")
-                    devicePolicyManager.setLockTaskPackages(myDeviceAdmin, appsWhiteList)
 
                     devicePolicyManager.addUserRestriction(
                         myDeviceAdmin, UserManager.DISALLOW_UNINSTALL_APPS

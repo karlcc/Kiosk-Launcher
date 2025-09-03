@@ -13,6 +13,28 @@ import com.osamaalek.kiosklauncher.ui.MainActivity
 
 class KioskUtil {
     companion object {
+        
+        @Volatile
+        internal var wasInKioskModeBeforePause = false
+        @Volatile
+        internal var screenUnlockedSincePause = false
+        
+        private const val PREF_KIOSK_AUTO_RESUME = "kiosk_auto_resume"
+        
+        fun isAutoResumeEnabled(context: Context): Boolean {
+            val prefs = context.getSharedPreferences("kiosk_settings", Context.MODE_PRIVATE)
+            return prefs.getBoolean(PREF_KIOSK_AUTO_RESUME, true)
+        }
+        
+        fun setAutoResumeEnabled(context: Context, enabled: Boolean) {
+            val prefs = context.getSharedPreferences("kiosk_settings", Context.MODE_PRIVATE)
+            prefs.edit().putBoolean(PREF_KIOSK_AUTO_RESUME, enabled).apply()
+        }
+        
+        fun onManualKioskExit() {
+            wasInKioskModeBeforePause = false
+            screenUnlockedSincePause = false
+        }
         fun startKioskMode(context: Activity) {
             val devicePolicyManager =
                 context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
@@ -63,6 +85,7 @@ class KioskUtil {
                     myDeviceAdmin, UserManager.DISALLOW_UNINSTALL_APPS
                 )
             }
+            onManualKioskExit()
         }
 
         fun isKioskModeActive(context: Activity): Boolean {

@@ -224,6 +224,17 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/switch_fullscreen" />
 
+    <Switch
+        android:id="@+id/switch_auto_resume"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Auto-Resume Kiosk After Screen Unlock"
+        android:textSize="14sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/switch_auto_resume" />
+
     <TextView
         android:id="@+id/textView_current_password"
         android:layout_width="0dp"

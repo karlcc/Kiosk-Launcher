@@ -50,7 +50,14 @@ try {
 $whitelisted_devices = [
     'abc123def456' => ['name' => 'Kiosk Device 1', 'location' => 'Reception'],
     '789xyz012abc' => ['name' => 'Kiosk Device 2', 'location' => 'Conference Room'],
-    // Add your actual device IDs here after testing
+    
+    // ADD YOUR DEVICE ID HERE:
+    // 'YOUR_DEVICE_ID_FROM_LOGS' => ['name' => 'Your Kiosk Device', 'location' => 'Your Location'],
+    
+    // To find your device ID:
+    // 1. Check the device_access.log file on your server
+    // 2. Look for your device ID in the log entries
+    // 3. Copy the device ID and replace 'YOUR_DEVICE_ID_FROM_LOGS' above
 ];
 
 // Get device information from custom headers

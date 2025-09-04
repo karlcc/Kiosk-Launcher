@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Validation Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+        .loading {
+            color: #666;
+            font-size: 18px;
+        }
+        .loading::after {
+            content: '...';
+            animation: dots 2s infinite;
+        }
+        @keyframes dots {
+            0%, 20% { content: ''; }
+            40% { content: '.'; }
+            60% { content: '..'; }
+            80%, 100% { content: '...'; }
+        }
+        .success {
+            color: #28a745;
+        }
+        .success h1 {
+            color: #28a745;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+        .error {
+            color: #dc3545;
+        }
+        .error h1 {
+            color: #dc3545;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+        .device-info {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #007bff;
+        }
+        .device-info h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+        .device-id {
+            font-family: 'Courier New', monospace;
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+            word-break: break-all;
+        }
+        .icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+        .retry-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        .retry-btn:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="content">
+            <div class="loading">
+                <div class="icon">🔍</div>
+                <h2>Checking Device Authorization</h2>
+                <p class="loading">Validating device access</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function validateDevice() {
+            const contentDiv = document.getElementById('content');
+            
+            try {
+                // Reset to loading state
+                contentDiv.innerHTML = `
+                    <div class="loading">
+                        <div class="icon">🔍</div>
+                        <h2>Checking Device Authorization</h2>
+                        <p class="loading">Validating device access</p>
+                    </div>
+                `;
+                
+                const response = await fetch('device_whitelist.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ action: 'validate' })
+                });
+                
+                // Check if response is JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error(`Server returned HTML instead of JSON. This usually means there's a PHP error.`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.access_granted) {
+                    // SUCCESS CASE
+                    contentDiv.innerHTML = `
+                        <div class="success">
+                            <div class="icon">✅</div>
+                            <h1>Access Granted</h1>
+                            <p><strong>Device Authorized Successfully</strong></p>
+                            <div class="device-info">
+                                <h3>Device Information</h3>
+                                <p><strong>Device ID:</strong></p>
+                                <div class="device-id">${data.device_id || 'Unknown'}</div>
+                                ${data.device_info ? `<p><strong>Location:</strong> ${data.device_info.location || 'Not specified'}</p>` : ''}
+                                ${data.device_info ? `<p><strong>Name:</strong> ${data.device_info.name || 'Unknown'}</p>` : ''}
+                            </div>
+                            <button class="retry-btn" onclick="validateDevice()">🔄 Check Again</button>
+                        </div>
+                    `;
+                } else {
+                    // FAIL CASE  
+                    contentDiv.innerHTML = `
+                        <div class="error">
+                            <div class="icon">❌</div>
+                            <h1>Access Denied</h1>
+                            <p><strong>Device Not Authorized</strong></p>
+                            <div class="device-info">
+                                <h3>Device Information</h3>
+                                <p><strong>Your Device ID:</strong></p>
+                                <div class="device-id">${data.device_id || 'Unable to detect device ID'}</div>
+                                <p style="color: #6c757d; font-size: 14px; margin-top: 15px;">
+                                    <strong>For Administrators:</strong><br>
+                                    Add the above Device ID to the whitelist in <code>device_whitelist.php</code> to authorize this device.
+                                </p>
+                            </div>
+                            <button class="retry-btn" onclick="validateDevice()">🔄 Try Again</button>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                // ERROR CASE
+                contentDiv.innerHTML = `
+                    <div class="error">
+                        <div class="icon">⚠️</div>
+                        <h1>Validation Error</h1>
+                        <p><strong>Unable to check device authorization</strong></p>
+                        <div class="device-info">
+                            <h3>Error Details</h3>
+                            <p style="color: #dc3545;">${error.message}</p>
+                            <p style="color: #6c757d; font-size: 14px; margin-top: 15px;">
+                                <strong>Common causes:</strong><br>
+                                • PHP script has syntax errors<br>
+                                • Server configuration issues<br>
+                                • Network connectivity problems
+                            </p>
+                        </div>
+                        <button class="retry-btn" onclick="validateDevice()">🔄 Retry</button>
+                    </div>
+                `;
+            }
+        }
+        
+        // Auto-start validation when page loads
+        window.addEventListener('load', validateDevice);
+        
+        // For React integration - expose the validation function
+        window.deviceValidation = {
+            validate: validateDevice
+        };
+    </script>
+</body>
+</html>

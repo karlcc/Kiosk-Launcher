@@ -16,28 +16,63 @@ jobs:
           fetch-depth: 1
 
       - name: Set up JDK 11
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           java-version: '11'
           distribution: 'temurin'
 
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Validate Gradle wrapper
+        uses: gradle/wrapper-validation-action@v2
+
       - name: Decode and setup keystore
         run: |
+          if [ -z "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "Error: KEYSTORE_BASE64 secret is not set"
+            exit 1
+          fi
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release-key.keystore
+          if [ ! -f release-key.keystore ]; then
+            echo "Error: Failed to create keystore file"
+            exit 1
+          fi
           ls -la release-key.keystore
+          echo "Keystore created successfully"
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
 
       - name: Build and Sign APK (release)
-        run: ./gradlew assembleRelease
+        run: |
+          echo "Starting release build..."
+          ./gradlew assembleRelease --stacktrace --info
         env:
           KEYSTORE_FILE: release-key.keystore
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      - name: Verify APK was created
+        run: |
+          if [ -f app/build/outputs/apk/release/app-release.apk ]; then
+            echo "✅ Release APK created successfully"
+            ls -la app/build/outputs/apk/release/app-release.apk
+          else
+            echo "❌ Release APK not found"
+            find app/build/outputs -name "*.apk" -type f || echo "No APK files found"
+            exit 1
+          fi
 
       - name: Upload Signed APK artifact
         uses: actions/upload-artifact@v4

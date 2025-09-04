@@ -13,7 +13,7 @@
 4. Edit `device_whitelist.php` and add your device ID like this:
 
 ```php
-$whitelisted_devices = [
+$whitelist = [
     'YOUR_DEVICE_ID_HERE' => ['name' => 'My Kiosk Device', 'location' => 'Office'],
     // ... other devices
 ];

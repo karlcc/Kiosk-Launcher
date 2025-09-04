@@ -26,10 +26,16 @@ import com.osamaalek.kiosklauncher.util.DisplayUtil
 import com.osamaalek.kiosklauncher.util.DebugLogger
 import com.osamaalek.kiosklauncher.util.DeviceIdentifier
 import com.osamaalek.kiosklauncher.util.DeviceInfo
+import com.osamaalek.kiosklauncher.util.SecurityUtil
+import com.osamaalek.kiosklauncher.util.SignedPayload
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import java.net.URL
 import java.net.HttpURLConnection
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import org.json.JSONObject
+import org.json.JSONException
 
 class HomeFragment : Fragment() {
 
@@ -137,7 +143,7 @@ class HomeFragment : Fragment() {
                             DebugLogger.log("Should intercept: $shouldIntercept")
                             
                             if (shouldIntercept) {
-                                DebugLogger.log("Creating request with device headers...")
+                                DebugLogger.log("Creating signed request with device headers...")
                                 return createRequestWithDeviceHeaders(req, deviceInfo)
                             } else {
                                 DebugLogger.log("Not intercepting static file, letting WebView handle normally")
@@ -320,24 +326,37 @@ class HomeFragment : Fragment() {
             
             // Copy original request properties
             connection.requestMethod = request.method
+            connection.connectTimeout = 10000 // 10 seconds
+            connection.readTimeout = 15000 // 15 seconds
             
             // Copy original headers
             request.requestHeaders.forEach { (key, value) ->
                 connection.setRequestProperty(key, value)
             }
             
-            // Add device identification headers
-            connection.setRequestProperty("X-Device-ID", deviceInfo.deviceId)
-            connection.setRequestProperty("X-Device-Info", deviceInfo.deviceInfo)
-            connection.setRequestProperty("X-App-Version", deviceInfo.appVersion)
+            // Create signed payload
+            val signedPayload = SecurityUtil.createSignedPayload(
+                deviceInfo.deviceId,
+                deviceInfo.deviceInfo, 
+                deviceInfo.appVersion
+            )
             
-            DebugLogger.log("Added device headers - ID: ${deviceInfo.deviceId}, Info: ${deviceInfo.deviceInfo}")
+            // Add signed device headers
+            connection.setRequestProperty("X-Device-ID", signedPayload.deviceId)
+            connection.setRequestProperty("X-Device-Info", signedPayload.deviceInfo)
+            connection.setRequestProperty("X-App-Version", signedPayload.appVersion)
+            connection.setRequestProperty("X-Timestamp", signedPayload.timestamp.toString())
+            connection.setRequestProperty("X-Nonce", signedPayload.nonce)
+            connection.setRequestProperty("X-Signature", signedPayload.signature)
+            
+            DebugLogger.log("Added signed device headers - ID: ${signedPayload.deviceId}")
+            DebugLogger.log("Request signature: ${signedPayload.signature.take(20)}...")
             
             // Make the request
             connection.connect()
             
             val responseCode = connection.responseCode
-            val contentType = connection.contentType ?: "text/html"
+            val contentType = connection.contentType ?: "application/json"
             val encoding = connection.contentEncoding ?: "utf-8"
             
             DebugLogger.log("Server response: $responseCode for ${request.url}")
@@ -345,28 +364,78 @@ class HomeFragment : Fragment() {
             // Handle different response codes
             when (responseCode) {
                 403 -> {
-                    DebugLogger.log("Device not authorized - redirecting to unauthorized page")
-                    return createUnauthorizedResponse()
+                    DebugLogger.log("Device not authorized - showing unauthorized page")
+                    return createUnauthorizedResponse(deviceInfo.deviceId)
                 }
                 in 200..299 -> {
-                    // Success - return the response
-                    val inputStream = connection.inputStream
-                    return WebResourceResponse(contentType, encoding, inputStream)
+                    // Success - verify response signature before returning
+                    val responseText = connection.inputStream.bufferedReader().readText()
+                    
+                    if (contentType.contains("application/json")) {
+                        val verifiedResponse = verifyAndProcessResponse(responseText)
+                        if (verifiedResponse != null) {
+                            return WebResourceResponse(contentType, encoding, verifiedResponse.byteInputStream())
+                        } else {
+                            DebugLogger.log("Response signature verification failed")
+                            return createSecurityErrorResponse()
+                        }
+                    } else {
+                        // Non-JSON response (HTML, CSS, etc.) - return as-is
+                        return WebResourceResponse(contentType, encoding, responseText.byteInputStream())
+                    }
                 }
                 else -> {
-                    // Other error codes - let WebView handle
-                    val errorStream = connection.errorStream ?: connection.inputStream
-                    return WebResourceResponse(contentType, encoding, errorStream)
+                    // Other error codes
+                    val errorText = try {
+                        connection.errorStream?.bufferedReader()?.readText() ?: "Unknown error"
+                    } catch (e: Exception) {
+                        "Network error: $responseCode"
+                    }
+                    DebugLogger.log("Server error $responseCode: $errorText")
+                    return WebResourceResponse(contentType, encoding, errorText.byteInputStream())
                 }
             }
             
         } catch (e: Exception) {
-            DebugLogger.logError("Error creating request with device headers", e)
-            null // Let WebView handle the original request
+            DebugLogger.logError("Error creating signed request", e)
+            return createNetworkErrorResponse(e.message ?: "Unknown network error")
         }
     }
     
-    private fun createUnauthorizedResponse(): WebResourceResponse {
+    private fun verifyAndProcessResponse(responseText: String): String? {
+        return try {
+            val jsonResponse = JSONObject(responseText)
+            
+            // Check if response has signature data
+            if (jsonResponse.has("signature") && jsonResponse.has("timestamp") && jsonResponse.has("nonce")) {
+                val responseData = jsonResponse.getJSONObject("data").toString()
+                val timestamp = jsonResponse.getLong("timestamp")
+                val nonce = jsonResponse.getString("nonce")
+                val signature = jsonResponse.getString("signature")
+                
+                if (SecurityUtil.verifyResponsePayload(responseData, timestamp, nonce, signature)) {
+                    DebugLogger.log("Response signature verified successfully")
+                    return jsonResponse.getJSONObject("data").toString()
+                } else {
+                    DebugLogger.log("Response signature verification failed")
+                    return null
+                }
+            } else {
+                // Response doesn't have signature - might be non-validation response
+                DebugLogger.log("Response has no signature data - treating as unsigned response")
+                return responseText
+            }
+        } catch (e: JSONException) {
+            DebugLogger.logError("Error parsing JSON response", e)
+            // If not JSON, return as-is (might be HTML or other content)
+            return responseText
+        } catch (e: Exception) {
+            DebugLogger.logError("Error verifying response", e)
+            return null
+        }
+    }
+    
+    private fun createUnauthorizedResponse(deviceId: String): WebResourceResponse {
         val unauthorizedHtml = """
             <!DOCTYPE html>
             <html>
@@ -374,23 +443,88 @@ class HomeFragment : Fragment() {
                 <title>Device Not Authorized</title>
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <style>
-                    body { font-family: Arial, sans-serif; text-align: center; margin: 50px; }
-                    .error { color: #d32f2f; }
-                    .device-id { background: #f5f5f5; padding: 10px; margin: 20px; border-radius: 5px; }
+                    body { font-family: Arial, sans-serif; text-align: center; margin: 50px; background: #f8f9fa; }
+                    .container { max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                    .error { color: #d32f2f; margin-bottom: 20px; }
+                    .device-id { background: #f5f5f5; padding: 15px; margin: 20px 0; border-radius: 5px; font-family: monospace; word-break: break-all; }
+                    .icon { font-size: 48px; margin-bottom: 20px; }
                 </style>
             </head>
             <body>
-                <h1 class="error">Device Not Authorized</h1>
-                <p>This device is not whitelisted for access.</p>
-                <div class="device-id">
-                    <strong>Device ID:</strong> ${DeviceIdentifier.getDeviceId(requireContext())}
+                <div class="container">
+                    <div class="icon">🚫</div>
+                    <h1 class="error">Access Denied</h1>
+                    <p>This device is not authorized to access this application.</p>
+                    <div class="device-id">
+                        <strong>Device ID:</strong><br>$deviceId
+                    </div>
+                    <p><strong>Next Steps:</strong></p>
+                    <p>Please contact your system administrator and provide the Device ID above to request access.</p>
+                    <p><small>This page uses cryptographic device validation to ensure security.</small></p>
                 </div>
-                <p>Please contact your administrator to whitelist this device.</p>
             </body>
             </html>
         """.trimIndent()
         
         return WebResourceResponse("text/html", "utf-8", unauthorizedHtml.byteInputStream())
+    }
+    
+    private fun createSecurityErrorResponse(): WebResourceResponse {
+        val errorHtml = """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Security Error</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <style>
+                    body { font-family: Arial, sans-serif; text-align: center; margin: 50px; background: #f8f9fa; }
+                    .container { max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                    .error { color: #d32f2f; }
+                    .icon { font-size: 48px; margin-bottom: 20px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="icon">⚠️</div>
+                    <h1 class="error">Security Verification Failed</h1>
+                    <p>The server response could not be verified for security reasons.</p>
+                    <p>Please try again or contact your system administrator if the problem persists.</p>
+                </div>
+            </body>
+            </html>
+        """.trimIndent()
+        
+        return WebResourceResponse("text/html", "utf-8", errorHtml.byteInputStream())
+    }
+    
+    private fun createNetworkErrorResponse(errorMessage: String): WebResourceResponse {
+        val errorHtml = """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Network Error</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <style>
+                    body { font-family: Arial, sans-serif; text-align: center; margin: 50px; background: #f8f9fa; }
+                    .container { max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                    .error { color: #ff9800; }
+                    .icon { font-size: 48px; margin-bottom: 20px; }
+                    .details { background: #f5f5f5; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 12px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="icon">🌐</div>
+                    <h1 class="error">Network Error</h1>
+                    <p>Unable to connect to the validation server.</p>
+                    <div class="details">$errorMessage</div>
+                    <p>Please check your internet connection and try again.</p>
+                </div>
+            </body>
+            </html>
+        """.trimIndent()
+        
+        return WebResourceResponse("text/html", "utf-8", errorHtml.byteInputStream())
     }
 
     private fun toggleConfigButtonVisibility() {

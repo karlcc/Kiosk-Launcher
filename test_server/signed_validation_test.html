@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signed Device Validation Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+        }
+        
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+            font-weight: 500;
+        }
+        
+        .loading {
+            background: #e3f2fd;
+            color: #1976d2;
+            border: 2px solid #bbdefb;
+        }
+        
+        .success {
+            background: #e8f5e8;
+            color: #2e7d32;
+            border: 2px solid #c8e6c9;
+        }
+        
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            border: 2px solid #ffcdd2;
+        }
+        
+        .device-info {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            word-break: break-all;
+            margin: 15px 0;
+        }
+        
+        .security-info {
+            background: #fff3e0;
+            border: 1px solid #ffcc02;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        .security-info h3 {
+            margin-top: 0;
+            color: #f57c00;
+        }
+        
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .feature-list li {
+            padding: 5px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+        
+        .feature-list li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #4caf50;
+            font-weight: bold;
+        }
+        
+        button {
+            background: #1976d2;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+        
+        button:hover {
+            background: #1565c0;
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Signed Device Validation Test</h1>
+        <p>This page tests the enhanced cryptographic device validation system.</p>
+        
+        <div class="security-info">
+            <h3>🛡️ Enhanced Security Features</h3>
+            <ul class="feature-list">
+                <li>HMAC-SHA256 request signing</li>
+                <li>Timestamp-based replay attack prevention</li>
+                <li>Cryptographic nonce generation</li>
+                <li>Server response signature verification</li>
+                <li>Comprehensive security event logging</li>
+            </ul>
+        </div>
+        
+        <div id="validationStatus" class="status loading">
+            🔄 Initializing secure validation...
+        </div>
+        
+        <div id="deviceInfo" class="device-info" style="display: none;"></div>
+        
+        <button id="retryBtn" onclick="performValidation()" style="display: none;">
+            🔄 Retry Validation
+        </button>
+        
+        <div id="securityDetails" style="display: none;">
+            <h3>Security Implementation Details</h3>
+            <p><strong>Request Flow:</strong></p>
+            <ol>
+                <li>Client generates timestamp and cryptographic nonce</li>
+                <li>Creates HMAC-SHA256 signature of device data + timestamp + nonce</li>
+                <li>Sends signed request with all security headers</li>
+                <li>Server validates signature and timestamp</li>
+                <li>Server returns signed response</li>
+                <li>Client verifies response signature before processing</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        let validationAttempts = 0;
+        const maxAttempts = 3;
+
+        // Simulate the validation process (in real app, this is handled by WebView client)
+        async function performValidation() {
+            validationAttempts++;
+            const statusEl = document.getElementById('validationStatus');
+            const deviceInfoEl = document.getElementById('deviceInfo');
+            const retryBtn = document.getElementById('retryBtn');
+            const securityDetailsEl = document.getElementById('securityDetails');
+            
+            statusEl.className = 'status loading';
+            statusEl.innerHTML = '🔄 Performing cryptographic validation...';
+            retryBtn.style.display = 'none';
+            deviceInfoEl.style.display = 'none';
+            
+            try {
+                // In the real app, this request is automatically signed by the WebView client
+                const response = await fetch('device_whitelist.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ test: 'validation' })
+                });
+                
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Invalid response format - expected signed JSON');
+                }
+                
+                const data = await response.json();
+                
+                // Check if this is a signed response
+                if (data.signature && data.timestamp && data.nonce && data.data) {
+                    statusEl.className = 'status success';
+                    statusEl.innerHTML = '✅ Signed Response Received - Verification Required';
+                    
+                    deviceInfoEl.innerHTML = `
+                        <strong>Response Structure:</strong><br>
+                        Data: ${JSON.stringify(data.data, null, 2)}<br>
+                        Timestamp: ${data.timestamp}<br>
+                        Nonce: ${data.nonce}<br>
+                        Signature: ${data.signature.substring(0, 32)}...
+                    `;
+                    deviceInfoEl.style.display = 'block';
+                    
+                    // In real app, signature would be verified here
+                    setTimeout(() => {
+                        if (data.data.access_granted) {
+                            statusEl.className = 'status success';
+                            statusEl.innerHTML = '🎉 Access Granted - Device Authorized';
+                        } else {
+                            statusEl.className = 'status error';
+                            statusEl.innerHTML = '🚫 Access Denied - Device Not Whitelisted';
+                            if (data.data.device_id) {
+                                deviceInfoEl.innerHTML += `<br><strong>Device ID:</strong> ${data.data.device_id}`;
+                            }
+                        }
+                        securityDetailsEl.style.display = 'block';
+                    }, 1500);
+                    
+                } else {
+                    // Legacy unsigned response
+                    if (data.access_granted) {
+                        statusEl.className = 'status success';
+                        statusEl.innerHTML = '✅ Access Granted (Legacy Mode)';
+                    } else {
+                        statusEl.className = 'status error';
+                        statusEl.innerHTML = '🚫 Access Denied';
+                        if (data.device_id) {
+                            deviceInfoEl.innerHTML = `<strong>Device ID:</strong> ${data.device_id}`;
+                            deviceInfoEl.style.display = 'block';
+                        }
+                    }
+                }
+                
+            } catch (error) {
+                console.error('Validation error:', error);
+                statusEl.className = 'status error';
+                
+                if (error.message.includes('Missing signature data')) {
+                    statusEl.innerHTML = '❌ Security Error: Request signature required';
+                } else if (error.message.includes('Invalid signature')) {
+                    statusEl.innerHTML = '❌ Security Error: Signature verification failed';
+                } else if (error.message.includes('Invalid timestamp')) {
+                    statusEl.innerHTML = '❌ Security Error: Request timestamp invalid (replay attack prevented)';
+                } else {
+                    statusEl.innerHTML = `❌ Validation Failed: ${error.message}`;
+                }
+                
+                if (validationAttempts < maxAttempts) {
+                    retryBtn.style.display = 'inline-block';
+                }
+                
+                deviceInfoEl.innerHTML = `<strong>Error Details:</strong><br>${error.message}`;
+                deviceInfoEl.style.display = 'block';
+            }
+        }
+
+        // Auto-start validation when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            // Simulate the automatic validation that happens in the real app
+            setTimeout(performValidation, 1000);
+        });
+    </script>
+</body>
+</html>

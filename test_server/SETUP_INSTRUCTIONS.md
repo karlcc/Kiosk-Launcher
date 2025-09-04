@@ -25,9 +25,14 @@ $whitelisted_devices = [
 
 ## For Your React App:
 
-### Copy the JavaScript logic from `simple_validation.html`:
+### Simple JavaScript validation function (copy this into your React component):
 ```javascript
+const [deviceStatus, setDeviceStatus] = useState('loading'); // 'loading', 'authorized', 'denied', 'error'
+const [deviceData, setDeviceData] = useState(null);
+
 async function validateDevice() {
+    setDeviceStatus('loading');
+    
     try {
         const response = await fetch('device_whitelist.php', {
             method: 'POST',
@@ -41,26 +46,32 @@ async function validateDevice() {
         }
         
         const data = await response.json();
+        setDeviceData(data);
         
         if (data.access_granted) {
-            // SUCCESS: Show authorized content
-            console.log('Device authorized:', data.device_id);
+            setDeviceStatus('authorized');
+            // SUCCESS: Show your app content
         } else {
-            // FAIL: Show unauthorized message + device ID for admin
-            console.log('Device denied:', data.device_id);
+            setDeviceStatus('denied');
+            // FAIL: Show "contact admin" message + device ID
         }
         
     } catch (error) {
-        // ERROR: Show error message
+        setDeviceStatus('error');
         console.error('Validation error:', error.message);
     }
 }
+
+// Call validateDevice() when your app starts
+useEffect(() => {
+    validateDevice();
+}, []);
 ```
 
-## Files:
+## Files Included:
 - ✅ `simple_validation.html` - Clean test page with 2 states
 - ✅ `device_whitelist.php` - API with proper error handling  
-- ✅ `react_integration.js` - Full React component (optional)
+- ✅ `SETUP_INSTRUCTIONS.md` - This setup guide
 - ✅ PHP error handling ensures JSON responses
 - ✅ Selective request interception (no more HTML source display)
 

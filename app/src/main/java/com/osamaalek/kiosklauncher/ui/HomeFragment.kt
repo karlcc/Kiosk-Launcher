@@ -25,6 +25,7 @@ import com.osamaalek.kiosklauncher.R
 import com.osamaalek.kiosklauncher.util.DisplayUtil
 import com.osamaalek.kiosklauncher.util.DebugLogger
 import com.osamaalek.kiosklauncher.util.DeviceIdentifier
+import com.osamaalek.kiosklauncher.util.DeviceInfo
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import java.net.URL
@@ -284,7 +285,7 @@ class HomeFragment : Fragment() {
         }
     }
 
-    private fun createRequestWithDeviceHeaders(request: WebResourceRequest, deviceInfo: DeviceIdentifier.DeviceInfo): WebResourceResponse? {
+    private fun createRequestWithDeviceHeaders(request: WebResourceRequest, deviceInfo: DeviceInfo): WebResourceResponse? {
         return try {
             val url = URL(request.url.toString())
             val connection = url.openConnection() as HttpURLConnection

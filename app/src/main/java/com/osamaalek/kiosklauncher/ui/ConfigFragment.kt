@@ -66,7 +66,14 @@ class ConfigFragment : Fragment() {
 
         val currentPassword = PasswordDialog.getCurrentPassword(requireContext())
         val deviceInfo = DeviceIdentifier.getDeviceIdentifierWithInfo(requireContext())
-        textViewCurrentPassword.text = "Current password: $currentPassword\n\nDevice ID: ${deviceInfo.deviceId}\nDevice Info: ${deviceInfo.deviceInfo}"
+        val validationEnabled = sharedPreferences.getBoolean("device_validation_enabled", false)
+        val validationStatus = if (validationEnabled) "ENABLED ✅" else "DISABLED ❌"
+        
+        textViewCurrentPassword.text = "Current password: $currentPassword\n\n" +
+            "Device ID: ${deviceInfo.deviceId}\n" +
+            "Device Info: ${deviceInfo.deviceInfo}\n\n" +
+            "Device Validation: $validationStatus\n" +
+            "(Long-press Save URL to toggle)"
 
         fabApps.setOnClickListener {
             requireActivity().supportFragmentManager.beginTransaction()

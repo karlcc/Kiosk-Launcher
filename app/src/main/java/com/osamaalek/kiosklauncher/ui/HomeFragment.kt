@@ -110,12 +110,19 @@ class HomeFragment : Fragment() {
                 request?.let { req ->
                     try {
                         val deviceInfo = DeviceIdentifier.getDeviceIdentifierWithInfo(requireContext())
-                        DebugLogger.log("Intercepting request to: ${req.url} with device ID: ${deviceInfo.deviceId}")
-                        
-                        // Check if device validation is enabled and if this is our target server
                         val validationEnabled = sharedPreferences.getBoolean("device_validation_enabled", false)
+                        
+                        DebugLogger.log("=== REQUEST INTERCEPT DEBUG ===")
+                        DebugLogger.log("URL: ${req.url}")
+                        DebugLogger.log("Device ID: ${deviceInfo.deviceId}")
+                        DebugLogger.log("Device Info: ${deviceInfo.deviceInfo}")
+                        DebugLogger.log("Validation Enabled: $validationEnabled")
+                        
                         if (validationEnabled) {
+                            DebugLogger.log("Creating request with device headers...")
                             return createRequestWithDeviceHeaders(req, deviceInfo)
+                        } else {
+                            DebugLogger.log("Device validation disabled - not adding headers")
                         }
                     } catch (e: Exception) {
                         DebugLogger.logError("Error intercepting request", e)

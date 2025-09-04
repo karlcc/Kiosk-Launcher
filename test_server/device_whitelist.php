@@ -25,11 +25,22 @@ $app_version = $_SERVER['HTTP_X_APP_VERSION'] ?? 'Unknown';
 
 // Log the request for debugging
 $log_message = date('Y-m-d H:i:s') . " - Device access attempt\n";
+$log_message .= "  Request Method: " . ($_SERVER['REQUEST_METHOD'] ?? 'Unknown') . "\n";
+$log_message .= "  Request URI: " . ($_SERVER['REQUEST_URI'] ?? 'Unknown') . "\n";
 $log_message .= "  Device ID: " . ($device_id ?? 'null') . "\n";
 $log_message .= "  Device Info: $device_info\n";
 $log_message .= "  App Version: $app_version\n";
 $log_message .= "  User Agent: " . ($_SERVER['HTTP_USER_AGENT'] ?? 'Unknown') . "\n";
-$log_message .= "  IP Address: " . ($_SERVER['REMOTE_ADDR'] ?? 'Unknown') . "\n\n";
+$log_message .= "  IP Address: " . ($_SERVER['REMOTE_ADDR'] ?? 'Unknown') . "\n";
+
+// Log all X- headers for debugging
+$log_message .= "  Custom Headers:\n";
+foreach (getallheaders() as $name => $value) {
+    if (stripos($name, 'x-') === 0) {
+        $log_message .= "    $name: $value\n";
+    }
+}
+$log_message .= "\n";
 
 // Write to log file
 file_put_contents('device_access.log', $log_message, FILE_APPEND | LOCK_EX);

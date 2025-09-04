@@ -52,7 +52,7 @@ $whitelisted_devices = [
     '789xyz012abc' => ['name' => 'Kiosk Device 2', 'location' => 'Conference Room'],
     
     // Your actual device ID from logs:
-    'ff7fca15cf0b74c5' => ['name' => 'Samsung Galaxy A35', 'location' => 'Test Device'],
+    // 'ff7fca15cf0b74c5' => ['name' => 'Samsung Galaxy A35', 'location' => 'Test Device'],
     
     // To add more devices:
     // 1. Check the device_access.log file on your server

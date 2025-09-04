@@ -153,8 +153,11 @@ class HomeFragment : Fragment() {
                             } else {
                                 DebugLogger.log("Using standard request - session tokens or static content")
                                 // For API endpoints, inject session token if available
-                                if (url.contains("/api/") && sessionToken != null) {
+                                if ((url.contains("/api/") || url.contains("api_validate") || url.contains("api_data")) && sessionToken != null) {
+                                    DebugLogger.log("Injecting session token for API endpoint: $url")
                                     return injectSessionToken(req, sessionToken!!)
+                                } else if (url.contains("api_validate") || url.contains("api_data")) {
+                                    DebugLogger.log("API endpoint found but no session token available: $url")
                                 }
                             }
                         } else {

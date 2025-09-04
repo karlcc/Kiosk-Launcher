@@ -33,10 +33,11 @@ class MainActivity : AppCompatActivity() {
             // Set optimal default settings for kiosk mode
             DisplayUtil.saveDisplaySettings(this, false, true) // hideStatusBar=false, fullscreenMode=true
             
-            // Initialize device validation settings
+            // Initialize device validation and URL settings
             with(sharedPreferences.edit()) {
-                putBoolean("device_validation_enabled", false) // Disabled by default
+                putBoolean("device_validation_enabled", true) // Enable for testing
                 putString("validation_server_url", "") // To be configured by user
+                putString("webview_url", "https://httpd.karldigi.dev/react_example.html") // Point to React example for testing
                 putBoolean("first_launch", false)
                 apply()
             }

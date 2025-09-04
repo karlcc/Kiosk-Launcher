@@ -10,7 +10,9 @@ header('Access-Control-Allow-Methods: GET, POST');
 
 // Security configuration
 define('SHARED_SECRET', 'kiosk-device-validation-secret-2025-v1');
+define('JWT_SECRET', 'kiosk-session-token-secret-2025-v1');
 define('TIMESTAMP_TOLERANCE', 5 * 60); // 5 minutes in seconds
+define('SESSION_TOKEN_EXPIRY', 24 * 60 * 60); // 24 hours
 define('LOG_FILE', 'device_access.log');
 define('SECURITY_LOG_FILE', 'security_events.log');
 
@@ -22,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // Device whitelist - replace with database lookup in production
 $whitelist = array(
     // Development & Testing Devices
-    // 'ff7fca15cf0b74c5' => array('name' => 'Samsung Galaxy A35', 'location' => 'Development Lab'),
+    '88771cddc69e47f1' => array('name' => 'Samsung Galaxy A35', 'location' => 'Development Lab'),
     // 'a1b2c3d4e5f6g7h8' => array('name' => 'Test Tablet 1', 'location' => 'QA Department'),
     
     // To add devices:
@@ -72,6 +74,62 @@ function createSignedResponse($data) {
         'nonce' => $nonce,
         'signature' => $signature
     ];
+}
+
+// JWT Token Functions for Session Management
+function base64UrlEncode($data) {
+    return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
+}
+
+function base64UrlDecode($data) {
+    return base64_decode(str_pad(strtr($data, '-_', '+/'), strlen($data) % 4, '=', STR_PAD_RIGHT));
+}
+
+function generateJWT($device_id, $device_details) {
+    $header = json_encode(['typ' => 'JWT', 'alg' => 'HS256']);
+    
+    $payload = json_encode([
+        'iss' => 'kiosk-launcher',           // Issuer
+        'sub' => $device_id,                 // Subject (device ID)
+        'device_name' => $device_details['name'],
+        'device_location' => $device_details['location'],
+        'iat' => time(),                     // Issued at
+        'exp' => time() + SESSION_TOKEN_EXPIRY,  // Expires
+        'jti' => bin2hex(random_bytes(16))   // JWT ID (unique identifier)
+    ]);
+    
+    $headerEncoded = base64UrlEncode($header);
+    $payloadEncoded = base64UrlEncode($payload);
+    
+    $signature = hash_hmac('sha256', $headerEncoded . '.' . $payloadEncoded, JWT_SECRET, true);
+    $signatureEncoded = base64UrlEncode($signature);
+    
+    return $headerEncoded . '.' . $payloadEncoded . '.' . $signatureEncoded;
+}
+
+function verifyJWT($jwt) {
+    $parts = explode('.', $jwt);
+    if (count($parts) !== 3) {
+        return false;
+    }
+    
+    list($headerEncoded, $payloadEncoded, $signatureEncoded) = $parts;
+    
+    // Verify signature
+    $signature = base64UrlDecode($signatureEncoded);
+    $expectedSignature = hash_hmac('sha256', $headerEncoded . '.' . $payloadEncoded, JWT_SECRET, true);
+    
+    if (!hash_equals($signature, $expectedSignature)) {
+        return false;
+    }
+    
+    // Decode payload and check expiration
+    $payload = json_decode(base64UrlDecode($payloadEncoded), true);
+    if (!$payload || $payload['exp'] < time()) {
+        return false;
+    }
+    
+    return $payload;
 }
 
 // Get and validate request headers
@@ -133,19 +191,30 @@ if (empty($device_id)) {
     echo json_encode($response);
 } else if (isset($whitelist[$device_id])) {
     $device_details = $whitelist[$device_id];
+    
+    // Generate JWT session token for React.js API calls
+    $session_token = generateJWT($device_id, $device_details);
+    
     $response = createSignedResponse([
         'status' => 'success',
         'message' => 'Device authorized',
         'access_granted' => true,
         'device_id' => $device_id,
         'device_name' => $device_details['name'],
-        'device_location' => $device_details['location']
+        'device_location' => $device_details['location'],
+        'session_token' => $session_token,
+        'token_expires_at' => time() + SESSION_TOKEN_EXPIRY,
+        'security_mode' => 'hybrid_cryptographic'
     ]);
-    logSecurityEvent('device_authorized', [
+    
+    logSecurityEvent('device_authorized_with_session', [
         'device_id' => $device_id,
         'device_name' => $device_details['name'],
-        'location' => $device_details['location']
+        'location' => $device_details['location'],
+        'session_token_issued' => true,
+        'token_expires_at' => date('Y-m-d H:i:s', time() + SESSION_TOKEN_EXPIRY)
     ]);
+    
     echo json_encode($response);
 } else {
     $response = createSignedResponse([

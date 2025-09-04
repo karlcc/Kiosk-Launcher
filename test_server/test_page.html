@@ -90,6 +90,7 @@
 
         <button onclick="testDeviceValidation()">🔍 Test Device Validation</button>
         <button onclick="checkDeviceHeaders()">📋 Check Headers Sent</button>
+        <button onclick="testPhpScript()">🔧 Test PHP Script</button>
         <button onclick="location.reload()">🔄 Refresh Page</button>
 
         <div id="result"></div>
@@ -117,19 +118,34 @@
     </div>
 
     <script>
-        function testDeviceValidation() {
+        async function testDeviceValidation() {
             const resultDiv = document.getElementById('result');
             resultDiv.innerHTML = '<div class="info">Testing device validation...</div>';
             
-            fetch('device_whitelist.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ test: true })
-            })
-            .then(response => response.json())
-            .then(data => {
+            try {
+                const response = await fetch('device_whitelist.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ test: true })
+                });
+                
+                // Check if the response is ok
+                if (!response.ok) {
+                    throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
+                }
+                
+                // Check content type
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    // Not JSON - likely an error page
+                    const text = await response.text();
+                    throw new Error(`Server returned non-JSON response. Content-Type: ${contentType || 'unknown'}. Response: ${text.substring(0, 200)}...`);
+                }
+                
+                const data = await response.json();
+                
                 const statusClass = data.access_granted ? 'success' : 'error';
                 resultDiv.innerHTML = `
                     <div class="${statusClass}">
@@ -137,18 +153,98 @@
                         <p><strong>Status:</strong> ${data.message}</p>
                         <p><strong>Access Granted:</strong> ${data.access_granted ? 'Yes' : 'No'}</p>
                         ${data.device_id ? `<p><strong>Device ID:</strong> ${data.device_id}</p>` : ''}
-                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                        ${data.device_info ? `<p><strong>Device Info:</strong> ${data.device_info}</p>` : ''}
+                        ${data.server_time ? `<p><strong>Server Time:</strong> ${data.server_time}</p>` : ''}
+                        <details>
+                            <summary>Full Server Response</summary>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </details>
                     </div>
                 `;
-            })
-            .catch(error => {
+                
+            } catch (error) {
+                console.error('Device validation test error:', error);
                 resultDiv.innerHTML = `
                     <div class="error">
-                        <h4>Error:</h4>
-                        <p>${error.message}</p>
+                        <h4>Test Failed:</h4>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p><strong>Possible causes:</strong></p>
+                        <ul>
+                            <li>PHP script has syntax errors or exceptions</li>
+                            <li>Server configuration issues</li>
+                            <li>Network connectivity problems</li>
+                            <li>CORS policy restrictions</li>
+                        </ul>
+                        <p><strong>What to check:</strong></p>
+                        <ol>
+                            <li>Check PHP error logs on your server</li>
+                            <li>Verify device_whitelist.php file exists and is accessible</li>
+                            <li>Test the PHP file directly in a browser</li>
+                        </ol>
                     </div>
                 `;
-            });
+            }
+        }
+        
+        async function testPhpScript() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<div class="info">Testing PHP script accessibility...</div>';
+            
+            try {
+                const response = await fetch('device_whitelist.php', {
+                    method: 'GET'
+                });
+                
+                const contentType = response.headers.get('content-type');
+                const text = await response.text();
+                
+                resultDiv.innerHTML = `
+                    <div class="${response.ok ? 'success' : 'error'}">
+                        <h4>PHP Script Test Results:</h4>
+                        <p><strong>HTTP Status:</strong> ${response.status} ${response.statusText}</p>
+                        <p><strong>Content-Type:</strong> ${contentType || 'unknown'}</p>
+                        <p><strong>Response Size:</strong> ${text.length} characters</p>
+                        
+                        <details>
+                            <summary>Raw Response (first 500 chars)</summary>
+                            <pre style="max-height: 200px; overflow: auto;">${text.substring(0, 500)}${text.length > 500 ? '...' : ''}</pre>
+                        </details>
+                        
+                        ${contentType && contentType.includes('application/json') ? 
+                            '<p class="success">✅ Server is returning JSON properly</p>' : 
+                            '<p class="error">❌ Server is not returning JSON. Check PHP syntax and server configuration.</p>'
+                        }
+                    </div>
+                `;
+                
+                // If it's JSON, try to parse it
+                if (contentType && contentType.includes('application/json')) {
+                    try {
+                        const json = JSON.parse(text);
+                        const jsonDiv = document.createElement('div');
+                        jsonDiv.className = 'info';
+                        jsonDiv.innerHTML = `
+                            <h5>Parsed JSON:</h5>
+                            <pre>${JSON.stringify(json, null, 2)}</pre>
+                        `;
+                        resultDiv.appendChild(jsonDiv);
+                    } catch (e) {
+                        const errorDiv = document.createElement('div');
+                        errorDiv.className = 'error';
+                        errorDiv.innerHTML = `<p>❌ JSON Parse Error: ${e.message}</p>`;
+                        resultDiv.appendChild(errorDiv);
+                    }
+                }
+                
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>PHP Script Test Failed:</h4>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p>This usually means the PHP file is not accessible or there are network issues.</p>
+                    </div>
+                `;
+            }
         }
         
         function checkDeviceHeaders() {
@@ -164,6 +260,7 @@
                     </ul>
                     <p><strong>User Agent:</strong> ${navigator.userAgent}</p>
                     <p><strong>Current Time:</strong> ${new Date().toLocaleString()}</p>
+                    <p><strong>Running in Kiosk App:</strong> ${navigator.userAgent.includes('wv') ? '✅ Yes' : '❌ No (regular browser)'}</p>
                 </div>
             `;
         }

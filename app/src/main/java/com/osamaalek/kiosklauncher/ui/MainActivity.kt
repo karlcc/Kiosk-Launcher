@@ -33,8 +33,13 @@ class MainActivity : AppCompatActivity() {
             // Set optimal default settings for kiosk mode
             DisplayUtil.saveDisplaySettings(this, false, true) // hideStatusBar=false, fullscreenMode=true
             
-            // Mark that we've initialized the settings
-            sharedPreferences.edit().putBoolean("first_launch", false).apply()
+            // Initialize device validation settings
+            with(sharedPreferences.edit()) {
+                putBoolean("device_validation_enabled", false) // Disabled by default
+                putString("validation_server_url", "") // To be configured by user
+                putBoolean("first_launch", false)
+                apply()
+            }
         }
     }
 

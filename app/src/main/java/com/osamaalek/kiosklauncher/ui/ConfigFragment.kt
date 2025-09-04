@@ -17,6 +17,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.osamaalek.kiosklauncher.R
 import com.osamaalek.kiosklauncher.util.DisplayUtil
 import com.osamaalek.kiosklauncher.util.KioskUtil
+import com.osamaalek.kiosklauncher.util.DeviceIdentifier
 
 class ConfigFragment : Fragment() {
 
@@ -64,7 +65,8 @@ class ConfigFragment : Fragment() {
         switchAutoResume.isChecked = autoResumeEnabled
 
         val currentPassword = PasswordDialog.getCurrentPassword(requireContext())
-        textViewCurrentPassword.text = "Current password: $currentPassword"
+        val deviceInfo = DeviceIdentifier.getDeviceIdentifierWithInfo(requireContext())
+        textViewCurrentPassword.text = "Current password: $currentPassword\n\nDevice ID: ${deviceInfo.deviceId}\nDevice Info: ${deviceInfo.deviceInfo}"
 
         fabApps.setOnClickListener {
             requireActivity().supportFragmentManager.beginTransaction()
@@ -104,6 +106,17 @@ class ConfigFragment : Fragment() {
             } else {
                 Toast.makeText(context, "Please enter a valid URL", Toast.LENGTH_SHORT).show()
             }
+        }
+
+        // Long press to toggle device validation (for testing)
+        buttonSaveUrl.setOnLongClickListener {
+            val currentStatus = sharedPreferences.getBoolean("device_validation_enabled", false)
+            val newStatus = !currentStatus
+            sharedPreferences.edit().putBoolean("device_validation_enabled", newStatus).apply()
+            
+            val statusText = if (newStatus) "ENABLED" else "DISABLED"
+            Toast.makeText(context, "Device Validation: $statusText", Toast.LENGTH_LONG).show()
+            true
         }
 
 

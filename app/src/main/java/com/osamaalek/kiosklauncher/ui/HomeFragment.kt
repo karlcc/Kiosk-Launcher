@@ -24,6 +24,11 @@ import androidx.core.view.WindowInsetsCompat
 import com.osamaalek.kiosklauncher.R
 import com.osamaalek.kiosklauncher.util.DisplayUtil
 import com.osamaalek.kiosklauncher.util.DebugLogger
+import com.osamaalek.kiosklauncher.util.DeviceIdentifier
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
+import java.net.URL
+import java.net.HttpURLConnection
 
 class HomeFragment : Fragment() {
 
@@ -98,6 +103,24 @@ class HomeFragment : Fragment() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
                 super.onPageStarted(view, url, favicon)
                 DebugLogger.log("Page started loading: $url")
+            }
+
+            override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
+                request?.let { req ->
+                    try {
+                        val deviceInfo = DeviceIdentifier.getDeviceIdentifierWithInfo(requireContext())
+                        DebugLogger.log("Intercepting request to: ${req.url} with device ID: ${deviceInfo.deviceId}")
+                        
+                        // Check if device validation is enabled and if this is our target server
+                        val validationEnabled = sharedPreferences.getBoolean("device_validation_enabled", false)
+                        if (validationEnabled) {
+                            return createRequestWithDeviceHeaders(req, deviceInfo)
+                        }
+                    } catch (e: Exception) {
+                        DebugLogger.logError("Error intercepting request", e)
+                    }
+                }
+                return super.shouldInterceptRequest(view, request)
             }
         }
         
@@ -259,6 +282,86 @@ class HomeFragment : Fragment() {
         """) { result ->
             DebugLogger.log("JavaScript safe-area injection result: $result")
         }
+    }
+
+    private fun createRequestWithDeviceHeaders(request: WebResourceRequest, deviceInfo: DeviceIdentifier.DeviceInfo): WebResourceResponse? {
+        return try {
+            val url = URL(request.url.toString())
+            val connection = url.openConnection() as HttpURLConnection
+            
+            // Copy original request properties
+            connection.requestMethod = request.method
+            
+            // Copy original headers
+            request.requestHeaders.forEach { (key, value) ->
+                connection.setRequestProperty(key, value)
+            }
+            
+            // Add device identification headers
+            connection.setRequestProperty("X-Device-ID", deviceInfo.deviceId)
+            connection.setRequestProperty("X-Device-Info", deviceInfo.deviceInfo)
+            connection.setRequestProperty("X-App-Version", deviceInfo.appVersion)
+            
+            DebugLogger.log("Added device headers - ID: ${deviceInfo.deviceId}, Info: ${deviceInfo.deviceInfo}")
+            
+            // Make the request
+            connection.connect()
+            
+            val responseCode = connection.responseCode
+            val contentType = connection.contentType ?: "text/html"
+            val encoding = connection.contentEncoding ?: "utf-8"
+            
+            DebugLogger.log("Server response: $responseCode for ${request.url}")
+            
+            // Handle different response codes
+            when (responseCode) {
+                403 -> {
+                    DebugLogger.log("Device not authorized - redirecting to unauthorized page")
+                    return createUnauthorizedResponse()
+                }
+                in 200..299 -> {
+                    // Success - return the response
+                    val inputStream = connection.inputStream
+                    return WebResourceResponse(contentType, encoding, inputStream)
+                }
+                else -> {
+                    // Other error codes - let WebView handle
+                    val errorStream = connection.errorStream ?: connection.inputStream
+                    return WebResourceResponse(contentType, encoding, errorStream)
+                }
+            }
+            
+        } catch (e: Exception) {
+            DebugLogger.logError("Error creating request with device headers", e)
+            null // Let WebView handle the original request
+        }
+    }
+    
+    private fun createUnauthorizedResponse(): WebResourceResponse {
+        val unauthorizedHtml = """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Device Not Authorized</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <style>
+                    body { font-family: Arial, sans-serif; text-align: center; margin: 50px; }
+                    .error { color: #d32f2f; }
+                    .device-id { background: #f5f5f5; padding: 10px; margin: 20px; border-radius: 5px; }
+                </style>
+            </head>
+            <body>
+                <h1 class="error">Device Not Authorized</h1>
+                <p>This device is not whitelisted for access.</p>
+                <div class="device-id">
+                    <strong>Device ID:</strong> ${DeviceIdentifier.getDeviceId(requireContext())}
+                </div>
+                <p>Please contact your administrator to whitelist this device.</p>
+            </body>
+            </html>
+        """.trimIndent()
+        
+        return WebResourceResponse("text/html", "utf-8", unauthorizedHtml.byteInputStream())
     }
 
     private fun toggleConfigButtonVisibility() {

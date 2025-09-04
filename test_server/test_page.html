@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kiosk Device ID Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border: 1px solid #e9ecef;
+        }
+        .device-info {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔒 Kiosk Device ID Test Page</h1>
+        
+        <div class="info">
+            <strong>Instructions:</strong>
+            <ol>
+                <li>Long-press the "Save URL" button in the Kiosk app to enable device validation</li>
+                <li>Make sure this test page URL is set as your kiosk URL</li>
+                <li>The device headers should be automatically sent with all requests</li>
+            </ol>
+        </div>
+
+        <div class="device-info">
+            <strong>Expected Device Headers:</strong>
+            <ul>
+                <li><code>X-Device-ID</code>: Your Android device ID</li>
+                <li><code>X-Device-Info</code>: Device manufacturer, model, Android version</li>
+                <li><code>X-App-Version</code>: Kiosk app version</li>
+            </ul>
+        </div>
+
+        <button onclick="testDeviceValidation()">🔍 Test Device Validation</button>
+        <button onclick="checkDeviceHeaders()">📋 Check Headers Sent</button>
+        <button onclick="location.reload()">🔄 Refresh Page</button>
+
+        <div id="result"></div>
+        
+        <h3>📝 Test PHP Script</h3>
+        <p>To test device validation, create a PHP file on your server with the provided code. The script will:</p>
+        <ul>
+            <li>Receive device headers from your kiosk app</li>
+            <li>Check against a whitelist of device IDs</li>
+            <li>Log all access attempts</li>
+            <li>Return JSON response indicating access status</li>
+        </ul>
+
+        <h3>🔧 Setup Instructions</h3>
+        <ol>
+            <li>Upload <code>device_whitelist.php</code> to your web server</li>
+            <li>Add your device ID to the whitelist array in the PHP file</li>
+            <li>Set your kiosk app to load a URL that makes requests to the PHP script</li>
+            <li>Enable device validation in the kiosk app (long-press Save URL button)</li>
+        </ol>
+
+        <div class="info">
+            <strong>Note:</strong> When device validation is enabled, all HTTP requests from the WebView will include device identification headers. Your PHP script can then validate these headers against your whitelist.
+        </div>
+    </div>
+
+    <script>
+        function testDeviceValidation() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<div class="info">Testing device validation...</div>';
+            
+            fetch('device_whitelist.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ test: true })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const statusClass = data.access_granted ? 'success' : 'error';
+                resultDiv.innerHTML = `
+                    <div class="${statusClass}">
+                        <h4>Validation Result:</h4>
+                        <p><strong>Status:</strong> ${data.message}</p>
+                        <p><strong>Access Granted:</strong> ${data.access_granted ? 'Yes' : 'No'}</p>
+                        ${data.device_id ? `<p><strong>Device ID:</strong> ${data.device_id}</p>` : ''}
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    </div>
+                `;
+            })
+            .catch(error => {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>Error:</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            });
+        }
+        
+        function checkDeviceHeaders() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = `
+                <div class="info">
+                    <h4>Headers Information:</h4>
+                    <p>In a regular web browser, you won't see device-specific headers. However, when loaded in the Kiosk Launcher app with device validation enabled, the following headers are automatically added:</p>
+                    <ul>
+                        <li><code>X-Device-ID</code>: Android ANDROID_ID</li>
+                        <li><code>X-Device-Info</code>: Device manufacturer_model_AndroidVersion</li>
+                        <li><code>X-App-Version</code>: Kiosk app version</li>
+                    </ul>
+                    <p><strong>User Agent:</strong> ${navigator.userAgent}</p>
+                    <p><strong>Current Time:</strong> ${new Date().toLocaleString()}</p>
+                </div>
+            `;
+        }
+        
+        // Auto-test on page load if in kiosk app
+        window.addEventListener('load', function() {
+            // Check if we're likely in the kiosk app by looking for Android WebView user agent
+            if (navigator.userAgent.includes('Android') && navigator.userAgent.includes('wv')) {
+                setTimeout(testDeviceValidation, 2000);
+            }
+        });
+    </script>
+</body>
+</html>

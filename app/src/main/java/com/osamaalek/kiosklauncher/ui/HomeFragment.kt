@@ -119,8 +119,29 @@ class HomeFragment : Fragment() {
                         DebugLogger.log("Validation Enabled: $validationEnabled")
                         
                         if (validationEnabled) {
-                            DebugLogger.log("Creating request with device headers...")
-                            return createRequestWithDeviceHeaders(req, deviceInfo)
+                            // Only intercept specific requests, not static files
+                            val url = req.url.toString()
+                            val shouldIntercept = when {
+                                url.contains(".php") -> true  // PHP files
+                                url.contains("/api/") -> true // API endpoints
+                                url.contains("device_whitelist") -> true // Our validation script
+                                url.endsWith(".html") -> false // Don't intercept HTML files
+                                url.endsWith(".css") -> false  // Don't intercept CSS files
+                                url.endsWith(".js") -> false   // Don't intercept JS files
+                                url.endsWith(".png") -> false  // Don't intercept images
+                                url.endsWith(".jpg") -> false  // Don't intercept images
+                                url.endsWith(".gif") -> false  // Don't intercept images
+                                else -> url.contains("?") || !url.contains(".") // Intercept dynamic requests
+                            }
+                            
+                            DebugLogger.log("Should intercept: $shouldIntercept")
+                            
+                            if (shouldIntercept) {
+                                DebugLogger.log("Creating request with device headers...")
+                                return createRequestWithDeviceHeaders(req, deviceInfo)
+                            } else {
+                                DebugLogger.log("Not intercepting static file, letting WebView handle normally")
+                            }
                         } else {
                             DebugLogger.log("Device validation disabled - not adding headers")
                         }

@@ -26,8 +26,8 @@ $whitelist = array(
     // 'a1b2c3d4e5f6g7h8' => array('name' => 'Test Tablet 1', 'location' => 'QA Department'),
     
     // To add devices:
-    // 1. Load simple_validation.html on your device 
-    // 2. Copy device ID from "Access Denied" screen
+    // 1. Load react_example.html or your React app in the kiosk 
+    // 2. Copy device ID from "Access Denied" screen or server logs
     // 3. Uncomment and replace one of the examples above with your device ID
     // 4. Or add new line: 'your_device_id' => array('name' => 'Device Name', 'location' => 'Location'),
 );

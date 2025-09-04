@@ -36,6 +36,7 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import org.json.JSONObject
 import org.json.JSONException
+import android.content.Context
 
 class HomeFragment : Fragment() {
 
@@ -47,6 +48,7 @@ class HomeFragment : Fragment() {
     private var originalOrientation: Int = 0
     private var isConfigButtonVisible: Boolean = true
     private lateinit var gestureDetector: GestureDetector
+    private var sessionToken: String? = null
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreateView(
@@ -125,28 +127,36 @@ class HomeFragment : Fragment() {
                         DebugLogger.log("Validation Enabled: $validationEnabled")
                         
                         if (validationEnabled) {
-                            // Only intercept specific requests, not static files
+                            // Hybrid Security Approach: Sign device validation requests only
                             val url = req.url.toString()
-                            val shouldIntercept = when {
-                                url.contains(".php") -> true  // PHP files
-                                url.contains("/api/") -> true // API endpoints
-                                url.contains("device_whitelist") -> true // Our validation script
-                                url.endsWith(".html") -> false // Don't intercept HTML files
-                                url.endsWith(".css") -> false  // Don't intercept CSS files
-                                url.endsWith(".js") -> false   // Don't intercept JS files
-                                url.endsWith(".png") -> false  // Don't intercept images
-                                url.endsWith(".jpg") -> false  // Don't intercept images
-                                url.endsWith(".gif") -> false  // Don't intercept images
-                                else -> url.contains("?") || !url.contains(".") // Intercept dynamic requests
+                            
+                            val requiresSignature = when {
+                                url.contains("device_whitelist") -> true    // Initial device validation - MUST be signed
+                                url.contains("api_validate") -> false       // Session token validation - no signature needed
+                                url.contains("api_data") -> false           // Session-protected APIs - no signature needed
+                                url.contains("/api/") -> false              // General API endpoints - use session tokens
+                                url.endsWith(".php") -> false               // Other PHP files - use session tokens
+                                url.endsWith(".html") -> false              // Static files
+                                url.endsWith(".css") -> false               // Static files
+                                url.endsWith(".js") -> false                // Static files
+                                url.endsWith(".png") -> false               // Images
+                                url.endsWith(".jpg") -> false               // Images
+                                url.endsWith(".gif") -> false               // Images
+                                else -> false                               // Default: no signature required
                             }
                             
-                            DebugLogger.log("Should intercept: $shouldIntercept")
+                            DebugLogger.log("URL: $url")
+                            DebugLogger.log("Requires cryptographic signature: $requiresSignature")
                             
-                            if (shouldIntercept) {
-                                DebugLogger.log("Creating signed request with device headers...")
+                            if (requiresSignature) {
+                                DebugLogger.log("Creating cryptographically signed request for device validation...")
                                 return createRequestWithDeviceHeaders(req, deviceInfo)
                             } else {
-                                DebugLogger.log("Not intercepting static file, letting WebView handle normally")
+                                DebugLogger.log("Using standard request - session tokens or static content")
+                                // For API endpoints, inject session token if available
+                                if (url.contains("/api/") && sessionToken != null) {
+                                    return injectSessionToken(req, sessionToken!!)
+                                }
                             }
                         } else {
                             DebugLogger.log("Device validation disabled - not adding headers")
@@ -374,6 +384,8 @@ class HomeFragment : Fragment() {
                     if (contentType.contains("application/json")) {
                         val verifiedResponse = verifyAndProcessResponse(responseText)
                         if (verifiedResponse != null) {
+                            // Check if this response contains a session token (from device validation)
+                            extractAndStoreSessionToken(verifiedResponse)
                             return WebResourceResponse(contentType, encoding, verifiedResponse.byteInputStream())
                         } else {
                             DebugLogger.log("Response signature verification failed")
@@ -526,6 +538,117 @@ class HomeFragment : Fragment() {
         
         return WebResourceResponse("text/html", "utf-8", errorHtml.byteInputStream())
     }
+    
+    private fun extractAndStoreSessionToken(responseJson: String) {
+        try {
+            val jsonResponse = JSONObject(responseJson)
+            if (jsonResponse.has("session_token")) {
+                sessionToken = jsonResponse.getString("session_token")
+                val expiresAt = jsonResponse.optLong("token_expires_at", 0)
+                
+                // Store session token in SharedPreferences for persistence
+                sharedPreferences.edit()
+                    .putString("session_token", sessionToken)
+                    .putLong("session_token_expires", expiresAt)
+                    .apply()
+                
+                DebugLogger.log("Session token extracted and stored successfully")
+                DebugLogger.log("Token expires at: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(java.util.Date(expiresAt * 1000))}")
+            }
+        } catch (e: JSONException) {
+            DebugLogger.logError("Error extracting session token from response", e)
+        }
+    }
+    
+    private fun injectSessionToken(request: WebResourceRequest, token: String): WebResourceResponse? {
+        return try {
+            val url = URL(request.url.toString())
+            val connection = url.openConnection() as HttpURLConnection
+            
+            // Copy original request properties
+            connection.requestMethod = request.method
+            connection.connectTimeout = 10000
+            connection.readTimeout = 15000
+            
+            // Copy original headers
+            request.requestHeaders.forEach { (key, value) ->
+                connection.setRequestProperty(key, value)
+            }
+            
+            // Inject Authorization header with session token
+            connection.setRequestProperty("Authorization", "Bearer $token")
+            
+            DebugLogger.log("Injected session token into API request")
+            DebugLogger.log("Token preview: ${token.take(20)}...")
+            
+            // Make the request
+            connection.connect()
+            
+            val responseCode = connection.responseCode
+            val contentType = connection.contentType ?: "application/json"
+            val encoding = connection.contentEncoding ?: "utf-8"
+            
+            DebugLogger.log("API response code: $responseCode for ${request.url}")
+            
+            when (responseCode) {
+                401 -> {
+                    // Session token expired or invalid - clear it
+                    sessionToken = null
+                    sharedPreferences.edit()
+                        .remove("session_token")
+                        .remove("session_token_expires")
+                        .apply()
+                    
+                    DebugLogger.log("Session token invalid/expired - cleared from storage")
+                    return createSessionExpiredResponse()
+                }
+                in 200..299 -> {
+                    val responseText = connection.inputStream.bufferedReader().readText()
+                    return WebResourceResponse(contentType, encoding, responseText.byteInputStream())
+                }
+                else -> {
+                    val errorText = try {
+                        connection.errorStream?.bufferedReader()?.readText() ?: "API error: $responseCode"
+                    } catch (e: Exception) {
+                        "Network error: $responseCode"
+                    }
+                    return WebResourceResponse(contentType, encoding, errorText.byteInputStream())
+                }
+            }
+            
+        } catch (e: Exception) {
+            DebugLogger.logError("Error injecting session token", e)
+            null // Let WebView handle the original request
+        }
+    }
+    
+    private fun createSessionExpiredResponse(): WebResourceResponse {
+        val expiredHtml = """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Session Expired</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <style>
+                    body { font-family: Arial, sans-serif; text-align: center; margin: 50px; background: #f8f9fa; }
+                    .container { max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                    .warning { color: #ff9800; }
+                    .icon { font-size: 48px; margin-bottom: 20px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="icon">⏰</div>
+                    <h1 class="warning">Session Expired</h1>
+                    <p>Your session token has expired. The app will automatically re-authenticate.</p>
+                    <p><small>Please refresh the page to continue.</small></p>
+                </div>
+            </body>
+            </html>
+        """.trimIndent()
+        
+        return WebResourceResponse("text/html", "utf-8", expiredHtml.byteInputStream())
+    }
 
     private fun toggleConfigButtonVisibility() {
         isConfigButtonVisible = !isConfigButtonVisible
@@ -534,6 +657,23 @@ class HomeFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        
+        // Restore session token from SharedPreferences
+        val storedToken = sharedPreferences.getString("session_token", null)
+        val tokenExpires = sharedPreferences.getLong("session_token_expires", 0)
+        
+        if (storedToken != null && tokenExpires > System.currentTimeMillis() / 1000) {
+            sessionToken = storedToken
+            DebugLogger.log("Session token restored from storage")
+        } else if (storedToken != null) {
+            // Token expired - clear it
+            sharedPreferences.edit()
+                .remove("session_token")
+                .remove("session_token_expires")
+                .apply()
+            DebugLogger.log("Stored session token expired - cleared from storage")
+        }
+        
         // Reload URL in case it was changed in config
         val url = sharedPreferences.getString("webview_url", "https://www.google.com")
         if (url != null && webView.url != url) {

@@ -7,4 +7,8 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <!-- Dialog button colors for better visibility in dark theme -->
+    <color name="dialog_button_positive">#FF2196F3</color>
+    <color name="dialog_button_negative">#FFF44336</color>
+    <color name="dialog_button_neutral">#FF757575</color>
 </resources>

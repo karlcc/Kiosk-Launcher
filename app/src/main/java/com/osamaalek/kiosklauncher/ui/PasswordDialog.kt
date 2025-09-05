@@ -7,6 +7,8 @@ import android.text.InputType
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.Toast
+import androidx.core.content.ContextCompat
+import com.osamaalek.kiosklauncher.R
 
 class PasswordDialog {
     companion object {
@@ -49,6 +51,14 @@ class PasswordDialog {
             val dialog = builder.create()
             dialog.setCancelable(false)
             dialog.show()
+            
+            // Apply custom colors to dialog buttons for better visibility
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(
+                ContextCompat.getColor(context, R.color.dialog_button_positive)
+            )
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(
+                ContextCompat.getColor(context, R.color.dialog_button_negative)
+            )
         }
 
         fun showSetPasswordDialog(context: Context, onSuccess: (() -> Unit)? = null) {
@@ -84,7 +94,16 @@ class PasswordDialog {
                 dialog.cancel()
             }
 
-            builder.create().show()
+            val setPasswordDialog = builder.create()
+            setPasswordDialog.show()
+            
+            // Apply custom colors to dialog buttons for better visibility
+            setPasswordDialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(
+                ContextCompat.getColor(context, R.color.dialog_button_positive)
+            )
+            setPasswordDialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(
+                ContextCompat.getColor(context, R.color.dialog_button_negative)
+            )
         }
 
         fun getCurrentPassword(context: Context): String {

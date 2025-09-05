@@ -33,8 +33,9 @@ your-server/
 ├── device_whitelist.php    # Main validation endpoint
 ├── api_validate.php        # Session token validation
 ├── api_data.php           # Example protected API
-├── react_example.html     # Working React.js example
-├── REACT_INTEGRATION_GUIDE.md
+├── react_example.html     # React.js implementation example
+├── vanilla_example.html   # Vanilla JavaScript example
+├── INTEGRATION_GUIDE.md   # Complete integration guide
 └── SECURITY_IMPLEMENTATION.md
 ```
 
@@ -58,9 +59,12 @@ $whitelist = array(
 
 4. **Reload app** - should now show "Access Granted" with session token
 
-### 3. Integrate with Your React.js App
+### 3. Choose Your Integration Approach
 
-See `REACT_INTEGRATION_GUIDE.md` for complete integration details, or use this quick template:
+**Option A: React.js** - Use `react_example.html` as starting point  
+**Option B: Vanilla JavaScript** - Use `vanilla_example.html` as starting point
+
+See `INTEGRATION_GUIDE.md` for complete details, or use this quick template:
 
 ```jsx
 import React, { useState, useEffect } from 'react';
@@ -274,8 +278,9 @@ $user_session = validateSessionToken(); // Reusable function
 
 ## Support
 
-- **Integration Guide**: `REACT_INTEGRATION_GUIDE.md`
+- **Integration Guide**: `INTEGRATION_GUIDE.md` (covers both React & Vanilla JS)
 - **Security Details**: `SECURITY_IMPLEMENTATION.md` 
-- **Example App**: `react_example.html`
+- **React Example**: `react_example.html`
+- **Vanilla JS Example**: `vanilla_example.html`
 
-This hybrid security system provides **enterprise-grade protection** while maintaining full **React.js compatibility** for modern web applications.
+This hybrid security system provides **enterprise-grade protection** with both React.js and Vanilla JavaScript compatibility for modern web applications.

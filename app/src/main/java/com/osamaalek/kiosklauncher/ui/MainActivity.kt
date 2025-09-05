@@ -37,7 +37,7 @@ class MainActivity : AppCompatActivity() {
             with(sharedPreferences.edit()) {
                 putBoolean("device_validation_enabled", true) // Enable for testing
                 putString("validation_server_url", "") // To be configured by user
-                putString("webview_url", "https://httpd.karldigi.dev/react_example.html") // Point to React example for testing
+                putString("webview_url", "https://www.google.com") // inject default webview_url
                 putBoolean("first_launch", false)
                 apply()
             }

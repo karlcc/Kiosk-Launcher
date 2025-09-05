@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vanilla JS Kiosk App Example</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8fafc;
+            color: #1a202c;
+        }
+
+        .app {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .device-info {
+            opacity: 0.9;
+            font-size: 0.9rem;
+        }
+
+        .main {
+            flex: 1;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .loading-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: #f8fafc;
+        }
+
+        .spinner {
+            border: 4px solid #e2e8f0;
+            border-left: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .auth-error {
+            text-align: center;
+            padding: 3rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            max-width: 500px;
+            margin: 2rem auto;
+        }
+
+        .auth-error h1 {
+            color: #e53e3e;
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .dashboard {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            padding: 2rem;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .status-card {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .status-card h3 {
+            color: #4a5568;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #2d3748;
+        }
+
+        .notifications {
+            margin-top: 2rem;
+        }
+
+        .notification {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid #667eea;
+        }
+
+        .notification.unread {
+            background: #f0fff4;
+            border-left-color: #38a169;
+        }
+
+        .notification.system {
+            border-left-color: #3182ce;
+        }
+
+        .notification.security {
+            border-left-color: #d69e2e;
+        }
+
+        .notification-content p {
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .notification-content small {
+            color: #718096;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #5a67d8;
+        }
+
+        button:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+        }
+
+        .error {
+            background: #fed7d7;
+            border: 1px solid #feb2b2;
+            color: #c53030;
+            padding: 1rem;
+            border-radius: 6px;
+            margin: 1rem 0;
+        }
+
+        .security-info {
+            background: #fffbeb;
+            border: 1px solid #f6e05e;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .security-info h3 {
+            color: #d69e2e;
+            margin-bottom: 0.5rem;
+        }
+
+        .debug-console {
+            margin-top: 20px;
+            padding: 15px;
+            background: #1a202c;
+            color: #e2e8f0;
+            border-radius: 8px;
+            font-size: 12px;
+            font-family: monospace;
+            max-height: 200px;
+            overflow: auto;
+            text-align: left;
+            max-width: 600px;
+        }
+
+        .debug-console .debug-entry {
+            margin-bottom: 5px;
+        }
+
+        .debug-console .timestamp {
+            color: #718096;
+        }
+
+        .debug-console pre {
+            margin: 5px 0;
+            font-size: 11px;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+
+    <script>
+        // Application State
+        let appState = {
+            isAuthenticated: false,
+            deviceInfo: null,
+            isLoading: true,
+            debugInfo: [],
+            dashboardData: null
+        };
+
+        // Debug logging
+        function addDebug(message, data = null) {
+            const entry = { 
+                timestamp: new Date().toISOString(), 
+                message, 
+                data 
+            };
+            appState.debugInfo.push(entry);
+            console.log(message, data || '');
+            render(); // Re-render to show debug updates
+        }
+
+        // Authentication functions
+        async function checkInitialAuth() {
+            appState.isLoading = true;
+            render();
+
+            try {
+                addDebug('🔐 Starting device authentication flow...');
+                
+                // Step 1: Initial device authentication (gets signed by WebView)
+                addDebug('📱 Step 1: Calling device_whitelist.php for initial authentication...');
+                const deviceResponse = await fetch('/device_whitelist.php', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (deviceResponse.ok) {
+                    const deviceData = await deviceResponse.json();
+                    addDebug('✅ Device authentication response:', deviceData);
+                    
+                    // Handle signed response structure - data is nested under 'data' property
+                    const actualData = deviceData.data || deviceData;
+                    addDebug('📦 Extracted data:', actualData);
+                    
+                    if (actualData.access_granted && actualData.session_token) {
+                        addDebug('🎫 Step 2: Got session token, validating with api_validate.php...');
+                        
+                        // Step 2: Validate session token - use the session token from actualData
+                        const validateResponse = await fetch('/api_validate.php', {
+                            method: 'POST',
+                            headers: { 
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${actualData.session_token}`
+                            }
+                        });
+
+                        if (validateResponse.ok) {
+                            const validateData = await validateResponse.json();
+                            addDebug('✅ Session validation successful:', validateData);
+                            addDebug('🔍 validateData.authenticated:', validateData.authenticated);
+                            addDebug('🔍 Full validateData structure:', validateData);
+                            
+                            if (validateData.authenticated === true) {
+                                addDebug('🎯 Setting isAuthenticated = true');
+                                
+                                const finalDeviceInfo = {
+                                    device_id: actualData.device_id,
+                                    device_name: actualData.device_name,
+                                    device_location: actualData.device_location,
+                                    expires_at: new Date(actualData.token_expires_at * 1000).toLocaleString(),
+                                    ...validateData.device_info
+                                };
+                                
+                                addDebug('🏠 Final deviceInfo:', finalDeviceInfo);
+                                
+                                // Use setTimeout to ensure state updates properly in WebView
+                                setTimeout(() => {
+                                    addDebug('🏠 Applying authentication state...');
+                                    appState.isAuthenticated = true;
+                                    appState.deviceInfo = finalDeviceInfo;
+                                    addDebug('✅ Authentication complete - should show dashboard now');
+                                    render();
+                                }, 100);
+                                
+                                // Don't return early, let the flow complete
+                            } else {
+                                addDebug('❌ validateData.authenticated is not true:', validateData.authenticated);
+                            }
+                        } else {
+                            addDebug('❌ Session validation failed:', validateResponse.status);
+                            const errorText = await validateResponse.text();
+                            addDebug('❌ Session validation error body:', errorText);
+                        }
+                    } else {
+                        addDebug('❌ Device authentication failed:', deviceData);
+                        // Store failed device info for error display
+                        if (actualData.device_id) {
+                            appState.deviceInfo = {
+                                device_id: actualData.device_id,
+                                failed: true
+                            };
+                        }
+                    }
+                } else {
+                    addDebug('❌ Device authentication response not OK:', deviceResponse.status);
+                    // Try to get device ID from error response for display
+                    try {
+                        const errorData = await deviceResponse.json();
+                        const errorActualData = errorData.data || errorData;
+                        if (errorActualData.device_id) {
+                            appState.deviceInfo = {
+                                device_id: errorActualData.device_id,
+                                failed: true
+                            };
+                        }
+                    } catch (e) {
+                        addDebug('Could not parse error response');
+                    }
+                }
+            } catch (error) {
+                addDebug('💥 Auth check failed:', error.message);
+                console.error('💥 Auth check failed:', error);
+            }
+            
+            addDebug('🏁 Authentication flow completed, setIsLoading(false)');
+            appState.isLoading = false;
+            render();
+        }
+
+        // Dashboard data loading
+        async function loadDashboardData() {
+            try {
+                const response = await fetch('/api_data.php');
+                if (response.ok) {
+                    appState.dashboardData = await response.json();
+                    render();
+                } else {
+                    console.error('Failed to load dashboard data:', response.status);
+                }
+            } catch (error) {
+                console.error('Failed to load dashboard:', error);
+            }
+        }
+
+        // Logout function
+        function logout() {
+            appState.isAuthenticated = false;
+            appState.deviceInfo = null;
+            window.location.reload();
+        }
+
+        // Rendering functions
+        function renderLoadingScreen() {
+            const debugInfoHtml = appState.debugInfo.length > 0 ? `
+                <div class="debug-console">
+                    <strong>Debug Log:</strong><br/>
+                    ${appState.debugInfo.slice(-10).map(entry => `
+                        <div class="debug-entry">
+                            <span class="timestamp">${entry.timestamp.split('T')[1].split('.')[0]}</span> ${entry.message}
+                            ${entry.data ? `<pre>${JSON.stringify(entry.data, null, 1)}</pre>` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            ` : '';
+
+            return `
+                <div class="loading-screen">
+                    <div class="spinner"></div>
+                    <h2>🔐 Authenticating Device...</h2>
+                    <p>Verifying cryptographic signatures and session tokens...</p>
+                    ${debugInfoHtml}
+                </div>
+            `;
+        }
+
+        function renderAuthError() {
+            const deviceIdHtml = appState.deviceInfo?.device_id ? `
+                <div style="background: #f7fafc; padding: 15px; border-radius: 6px; margin: 15px 0; font-family: monospace;">
+                    <strong>Device ID:</strong> ${appState.deviceInfo.device_id}
+                </div>
+            ` : '';
+
+            return `
+                <div class="loading-screen">
+                    <div class="auth-error">
+                        <h1>🚫 Access Denied</h1>
+                        <p>This device is not authorized to access this application.</p>
+                        <p><strong>Device authentication failed.</strong></p>
+                        ${deviceIdHtml}
+                        <p>Please contact your system administrator.</p>
+                        <button onclick="window.location.reload()">
+                            🔄 Retry Authentication
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderDashboard() {
+            const data = appState.dashboardData;
+            
+            return `
+                <div class="dashboard">
+                    <div class="security-info">
+                        <h3>🔐 Security Status</h3>
+                        <p>
+                            <strong>✅ Device Authenticated:</strong> ${data?.session_info?.device_name || appState.deviceInfo?.device_name || 'Unknown Device'}<br/>
+                            <strong>📍 Location:</strong> ${data?.session_info?.device_location || appState.deviceInfo?.device_location || 'Unknown Location'}<br/>
+                            <strong>🎫 Session Mode:</strong> ${data?.security_mode || 'hybrid_cryptographic'}<br/>
+                            <strong>⏰ Session Expires In:</strong> ${data?.session_info?.session_expires_in ? Math.round(data.session_info.session_expires_in / 3600) + ' hours' : 'Unknown'}
+                        </p>
+                    </div>
+
+                    <h2>📊 System Status</h2>
+                    <div class="status-grid">
+                        <div class="status-card">
+                            <h3>Device Status</h3>
+                            <p class="status-value">${data?.data?.dashboard?.device_status || 'Online'}</p>
+                        </div>
+                        <div class="status-card">
+                            <h3>Uptime</h3>
+                            <p class="status-value">${data?.data?.dashboard?.uptime || '24h 32m'}</p>
+                        </div>
+                        <div class="status-card">
+                            <h3>Memory Usage</h3>
+                            <p class="status-value">${data?.data?.dashboard?.memory_usage || '65%'}</p>
+                        </div>
+                        <div class="status-card">
+                            <h3>Storage</h3>
+                            <p class="status-value">${data?.data?.dashboard?.storage_available || '2.4 GB'}</p>
+                        </div>
+                    </div>
+
+                    <h2>🔔 Recent Notifications</h2>
+                    <div class="notifications">
+                        ${data?.data?.notifications?.map(notification => `
+                            <div class="notification ${notification.type} ${notification.read ? 'read' : 'unread'}">
+                                <div class="notification-content">
+                                    <p>${notification.message}</p>
+                                    <small>${notification.timestamp}</small>
+                                </div>
+                            </div>
+                        `).join('') || `
+                            <div class="notification system">
+                                <div class="notification-content">
+                                    <p>✅ System authenticated successfully with hybrid cryptographic security</p>
+                                    <small>${new Date().toLocaleString()}</small>
+                                </div>
+                            </div>
+                        `}
+                    </div>
+
+                    <div style="margin-top: 2rem; text-align: center;">
+                        <button onclick="loadDashboardData()">
+                            🔄 Refresh Data
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderApp() {
+            return `
+                <div class="app">
+                    <header class="header">
+                        <h1>🖥️ Kiosk Dashboard</h1>
+                        <div class="device-info">
+                            📱 ${appState.deviceInfo?.device_name || 'Unknown Device'} • 
+                            📍 ${appState.deviceInfo?.device_location || 'Unknown Location'} •
+                            ⏰ Session expires: ${appState.deviceInfo?.expires_at || 'Unknown'}
+                        </div>
+                    </header>
+                    <main class="main">
+                        ${renderDashboard()}
+                    </main>
+                </div>
+            `;
+        }
+
+        // Main render function
+        function render() {
+            const appElement = document.getElementById('app');
+            
+            if (appState.isLoading) {
+                appElement.innerHTML = renderLoadingScreen();
+            } else if (!appState.isAuthenticated) {
+                appElement.innerHTML = renderAuthError();
+            } else {
+                appElement.innerHTML = renderApp();
+            }
+        }
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            render();
+            checkInitialAuth();
+            
+            // Load dashboard data once authenticated
+            const checkForAuth = setInterval(() => {
+                if (appState.isAuthenticated && !appState.dashboardData) {
+                    loadDashboardData();
+                    clearInterval(checkForAuth);
+                }
+            }, 500);
+        });
+    </script>
+</body>
+</html>

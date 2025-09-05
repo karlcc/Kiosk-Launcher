@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // Device whitelist - replace with database lookup in production
 $whitelist = array(
     // Development & Testing Devices
-    '88771cddc69e47f1' => array('name' => 'Samsung Galaxy A35', 'location' => 'Development Lab'),
+    '346501863fc6be9e' => array('name' => 'Samsung Galaxy A35', 'location' => 'Development Lab'),
     // 'a1b2c3d4e5f6g7h8' => array('name' => 'Test Tablet 1', 'location' => 'QA Department'),
     
     // To add devices:

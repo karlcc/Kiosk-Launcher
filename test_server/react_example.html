@@ -216,6 +216,7 @@
             const [isAuthenticated, setIsAuthenticated] = useState(false);
             const [deviceInfo, setDeviceInfo] = useState(null);
             const [isLoading, setIsLoading] = useState(true);
+            const [debugInfo, setDebugInfo] = useState([]);
 
             useEffect(() => {
                 checkInitialAuth();
@@ -223,8 +224,17 @@
 
             const checkInitialAuth = async () => {
                 setIsLoading(true);
+                const debugLog = [];
+                
+                const addDebug = (message, data = null) => {
+                    const entry = { timestamp: new Date().toISOString(), message, data };
+                    debugLog.push(entry);
+                    setDebugInfo(prev => [...prev, entry]);
+                    console.log(message, data || '');
+                };
+
                 try {
-                    console.log('🔐 Starting device authentication flow...');
+                    addDebug('🔐 Starting device authentication flow...');
                     
                     // Step 1: Initial device authentication (gets signed by WebView)
                     console.log('📱 Step 1: Calling device_whitelist.php for initial authentication...');
@@ -237,36 +247,90 @@
                         const deviceData = await deviceResponse.json();
                         console.log('✅ Device authentication response:', deviceData);
                         
-                        if (deviceData.access_granted && deviceData.session_token) {
+                        // Handle signed response structure - data is nested under 'data' property
+                        const actualData = deviceData.data || deviceData;
+                        console.log('📦 Extracted data:', actualData);
+                        
+                        if (actualData.access_granted && actualData.session_token) {
                             console.log('🎫 Step 2: Got session token, validating with api_validate.php...');
                             
-                            // Step 2: Validate session token 
+                            // Step 2: Validate session token - use the session token from actualData
                             const validateResponse = await fetch('/api_validate.php', {
                                 method: 'POST',
                                 headers: { 
                                     'Content-Type': 'application/json',
-                                    'Authorization': `Bearer ${deviceData.session_token}`
+                                    'Authorization': `Bearer ${actualData.session_token}`
                                 }
                             });
 
                             if (validateResponse.ok) {
                                 const validateData = await validateResponse.json();
                                 console.log('✅ Session validation successful:', validateData);
+                                console.log('🔍 validateData.authenticated:', validateData.authenticated);
+                                console.log('🔍 Full validateData structure:', JSON.stringify(validateData, null, 2));
                                 
-                                if (validateData.authenticated) {
-                                    setIsAuthenticated(true);
-                                    setDeviceInfo(validateData.device_info || deviceData.device_details);
-                                    console.log('🏠 Authentication complete - showing dashboard');
-                                    return;
+                                if (validateData.authenticated === true) {
+                                    addDebug('🎯 Setting isAuthenticated = true');
+                                    
+                                    const finalDeviceInfo = {
+                                        device_id: actualData.device_id,
+                                        device_name: actualData.device_name,
+                                        device_location: actualData.device_location,
+                                        expires_at: new Date(actualData.token_expires_at * 1000).toLocaleString(),
+                                        ...validateData.device_info
+                                    };
+                                    
+                                    addDebug('🏠 Final deviceInfo:', finalDeviceInfo);
+                                    
+                                    // Use setTimeout to ensure state updates properly in WebView
+                                    setTimeout(() => {
+                                        addDebug('🏠 Applying authentication state...');
+                                        setIsAuthenticated(true);
+                                        setDeviceInfo(finalDeviceInfo);
+                                        addDebug('✅ Authentication complete - should show dashboard now');
+                                    }, 100);
+                                    
+                                    // Don't return early, let the flow complete
+                                } else {
+                                    console.log('❌ validateData.authenticated is not true:', validateData.authenticated);
                                 }
+                            } else {
+                                console.log('❌ Session validation failed:', validateResponse.status);
+                                const errorText = await validateResponse.text();
+                                console.log('❌ Session validation error body:', errorText);
                             }
                         } else {
                             console.log('❌ Device authentication failed:', deviceData);
+                            // Store failed device info for error display
+                            if (actualData.device_id) {
+                                setDeviceInfo({
+                                    device_id: actualData.device_id,
+                                    failed: true
+                                });
+                            }
+                        }
+                    } else {
+                        console.log('❌ Device authentication response not OK:', deviceResponse.status);
+                        // Try to get device ID from error response for display
+                        try {
+                            const errorData = await deviceResponse.json();
+                            const errorActualData = errorData.data || errorData;
+                            if (errorActualData.device_id) {
+                                setDeviceInfo({
+                                    device_id: errorActualData.device_id,
+                                    failed: true
+                                });
+                            }
+                        } catch (e) {
+                            console.log('Could not parse error response');
                         }
                     }
                 } catch (error) {
+                    addDebug('💥 Auth check failed:', error.message);
                     console.error('💥 Auth check failed:', error);
                 }
+                
+                addDebug('🏁 Authentication flow completed, setIsLoading(false)');
                 setIsLoading(false);
             };
 
@@ -276,7 +340,7 @@
                 window.location.reload();
             };
 
-            return { isAuthenticated, deviceInfo, isLoading, logout, checkInitialAuth };
+            return { isAuthenticated, deviceInfo, isLoading, logout, checkInitialAuth, debugInfo };
         };
 
         // API Hook
@@ -319,22 +383,50 @@
         };
 
         // Loading Screen Component
-        const LoadingScreen = () => (
+        const LoadingScreen = ({ debugInfo = [] }) => (
             <div className="loading-screen">
                 <div className="spinner"></div>
                 <h2>🔐 Authenticating Device...</h2>
                 <p>Verifying cryptographic signatures and session tokens...</p>
+                {debugInfo.length > 0 && (
+                    <div style={{
+                        marginTop: '20px',
+                        padding: '15px',
+                        background: '#1a202c',
+                        color: '#e2e8f0',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                        fontFamily: 'monospace',
+                        maxHeight: '200px',
+                        overflow: 'auto',
+                        textAlign: 'left',
+                        maxWidth: '600px'
+                    }}>
+                        <strong>Debug Log:</strong><br/>
+                        {debugInfo.slice(-10).map((entry, index) => (
+                            <div key={index} style={{marginBottom: '5px'}}>
+                                <span style={{color: '#718096'}}>{entry.timestamp.split('T')[1].split('.')[0]}</span> {entry.message}
+                                {entry.data && <pre style={{margin: '5px 0', fontSize: '11px'}}>{JSON.stringify(entry.data, null, 1)}</pre>}
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         );
 
         // Auth Error Component
-        const AuthError = () => (
+        const AuthError = ({ deviceInfo }) => (
             <div className="loading-screen">
                 <div className="auth-error">
                     <h1>🚫 Access Denied</h1>
                     <p>This device is not authorized to access this application.</p>
                     <p><strong>Device authentication failed.</strong></p>
-                    <p>Please contact your system administrator to whitelist this device.</p>
+                    {deviceInfo?.device_id && (
+                        <div style={{background: '#f7fafc', padding: '15px', borderRadius: '6px', margin: '15px 0', fontFamily: 'monospace'}}>
+                            <strong>Device ID:</strong> {deviceInfo.device_id}
+                        </div>
+                    )}
+                    <p>Please contact your system administrator.</p>
                     <button onClick={() => window.location.reload()}>
                         🔄 Retry Authentication
                     </button>
@@ -442,14 +534,14 @@
 
         // Main App Component
         const App = () => {
-            const { isAuthenticated, deviceInfo, isLoading } = useAuth();
+            const { isAuthenticated, deviceInfo, isLoading, debugInfo } = useAuth();
 
             if (isLoading) {
-                return <LoadingScreen />;
+                return <LoadingScreen debugInfo={debugInfo} />;
             }
 
             if (!isAuthenticated) {
-                return <AuthError />;
+                return <AuthError deviceInfo={deviceInfo} />;
             }
 
             return (

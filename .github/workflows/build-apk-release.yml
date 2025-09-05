@@ -60,7 +60,7 @@ jobs:
           ls -la release-key.keystore
           ./gradlew assembleRelease --stacktrace --info
         env:
-          KEYSTORE_FILE: ./release-key.keystore
+          KEYSTORE_FILE: ${{ github.workspace }}/release-key.keystore
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}

@@ -45,9 +45,7 @@ jobs:
         run: |
           echo "Starting debug build..."
           if [ -n "$DEBUG_KEYSTORE_BASE64" ]; then
-            echo $DEBUG_KEYSTORE_BASE64 > keystore.b64
-            base64 -d keystore.b64 > app/debug.keystore
-            rm keystore.b64
+            echo "$DEBUG_KEYSTORE_BASE64" > app/debug.keystore
             ./gradlew assembleDebug \
               --no-configuration-cache \
               --stacktrace \

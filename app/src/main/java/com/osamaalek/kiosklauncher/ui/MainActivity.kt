@@ -37,7 +37,7 @@ class MainActivity : AppCompatActivity() {
             with(sharedPreferences.edit()) {
                 putBoolean("device_validation_enabled", true) // Enable for testing
                 putString("validation_server_url", "") // To be configured by user
-                putString("webview_url", "https://www.google.com") // inject default webview_url
+                putString("webview_url", "https://cms.pt-mes.com/show") // inject default webview_url
                 putBoolean("first_launch", false)
                 apply()
             }

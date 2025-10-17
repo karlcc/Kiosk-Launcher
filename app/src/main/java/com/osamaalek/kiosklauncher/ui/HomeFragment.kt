@@ -224,7 +224,7 @@ class HomeFragment : Fragment() {
         }
 
         // Load URL from SharedPreferences
-        val url = sharedPreferences.getString("webview_url", "https://www.google.com")
+        val url = sharedPreferences.getString("webview_url", "https://cms.pt-mes.com/show")
         url?.let { webView.loadUrl(it) }
     }
 
@@ -677,7 +677,7 @@ class HomeFragment : Fragment() {
         }
         
         // Reload URL in case it was changed in config
-        val url = sharedPreferences.getString("webview_url", "https://www.google.com")
+        val url = sharedPreferences.getString("webview_url", "https://cms.pt-mes.com/show")
         if (url != null && webView.url != url) {
             webView.loadUrl(url)
         }

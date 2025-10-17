@@ -54,7 +54,7 @@ class ConfigFragment : Fragment() {
         sharedPreferences = requireContext().getSharedPreferences("kiosk_settings", Context.MODE_PRIVATE)
 
         // Load saved settings
-        val savedUrl = sharedPreferences.getString("webview_url", "https://www.google.com")
+        val savedUrl = sharedPreferences.getString("webview_url", "https://cms.pt-mes.com/show")
         editTextUrl.setText(savedUrl)
 
         val (hideStatusBar, fullscreenMode) = DisplayUtil.getDisplaySettings(requireContext())
